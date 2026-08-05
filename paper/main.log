@@ -1,10 +1,9 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2026.7.19)  5 AUG 2026 15:00
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2026.7.19)  5 AUG 2026 21:48
 entering extended mode
  restricted \write18 enabled.
- file:line:error style messages enabled.
  %&-line parsing enabled.
-**d:/recovery/dilu_only_user/paper/main.tex
-(d:/recovery/dilu_only_user/paper/main.tex
+**./main.tex
+(main.tex
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-04>
 (D:\MikTEX\tex/latex/ieeetran\IEEEtran.cls
@@ -18,7 +17,8 @@ Document Class: IEEEtran 2015/08/26 V1.8b by Michael Shell
 \@IEEEtrantmpcountB=\count188
 \@IEEEtrantmpcountC=\count189
 \@IEEEtrantmptoksA=\toks17
-LaTeX Font Info:    Trying to load font information for OT1+ptm on input line 503.
+LaTeX Font Info:    Trying to load font information for OT1+ptm on input line 5
+03.
 (D:\MikTEX\tex/latex/psnfss\ot1ptm.fd
 File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
 )
@@ -33,42 +33,52 @@ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <5> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <5> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
+
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <7> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
+
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <8> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <8> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
+
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <9> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <9> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
+
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <10> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
+
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <11> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <11> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
+
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <12> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
+
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <17> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <17> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
+
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <20> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <20> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
+
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <24> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <24> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
+
 \IEEEquantizedlength=\dimen147
 \IEEEquantizedlengthdiff=\dimen148
 \IEEEquantizedtextheightdiff=\dimen149
@@ -110,14 +120,17 @@ Package: amsmath 2023/05/13 v2.17o AMS math features
 For additional information on amsmath, use the `?' option.
 (D:\MikTEX\tex/latex/amsmath\amstext.sty
 Package: amstext 2021/08/26 v2.01 AMS text
- (D:\MikTEX\tex/latex/amsmath\amsgen.sty
+
+(D:\MikTEX\tex/latex/amsmath\amsgen.sty
 File: amsgen.sty 1999/11/30 v2.0 generic functions
 \@emptytoks=\toks18
 \ex@=\dimen164
-)) (D:\MikTEX\tex/latex/amsmath\amsbsy.sty
+))
+(D:\MikTEX\tex/latex/amsmath\amsbsy.sty
 Package: amsbsy 1999/11/29 v1.2d Bold Symbols
 \pmbraise@=\dimen165
-) (D:\MikTEX\tex/latex/amsmath\amsopn.sty
+)
+(D:\MikTEX\tex/latex/amsmath\amsopn.sty
 Package: amsopn 2022/04/08 v2.04 operator names
 )
 \inf@bad=\count268
@@ -167,16 +180,19 @@ LaTeX Info: Redefining \Relbar on input line 971.
 \mathdisplay@stack=\toks22
 LaTeX Info: Redefining \[ on input line 2953.
 LaTeX Info: Redefining \] on input line 2954.
-) (D:\MikTEX\tex/latex/amsfonts\amssymb.sty
+)
+(D:\MikTEX\tex/latex/amsfonts\amssymb.sty
 Package: amssymb 2013/01/14 v3.01 AMS font symbols
- (D:\MikTEX\tex/latex/amsfonts\amsfonts.sty
+
+(D:\MikTEX\tex/latex/amsfonts\amsfonts.sty
 Package: amsfonts 2013/01/14 v3.01 Basic AMSFonts support
 \symAMSa=\mathgroup4
 \symAMSb=\mathgroup5
 LaTeX Font Info:    Redeclaring math symbol \hbar on input line 98.
 LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
 (Font)                  U/euf/m/n --> U/euf/b/n on input line 106.
-)) (D:\MikTEX\tex/latex/booktabs\booktabs.sty
+))
+(D:\MikTEX\tex/latex/booktabs\booktabs.sty
 Package: booktabs 2020/01/12 v1.61803398 Publication quality tables
 \heavyrulewidth=\dimen173
 \lightrulewidth=\dimen174
@@ -195,27 +211,35 @@ Package: booktabs 2020/01/12 v1.61803398 Publication quality tables
 \@thisruleclass=\count282
 \@lastruleclass=\count283
 \@thisrulewidth=\dimen185
-) (D:\MikTEX\tex/latex/graphics\graphicx.sty
+)
+(D:\MikTEX\tex/latex/graphics\graphicx.sty
 Package: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)
- (D:\MikTEX\tex/latex/graphics\keyval.sty
+
+(D:\MikTEX\tex/latex/graphics\keyval.sty
 Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
 \KV@toks@=\toks23
-) (D:\MikTEX\tex/latex/graphics\graphics.sty
+)
+(D:\MikTEX\tex/latex/graphics\graphics.sty
 Package: graphics 2022/03/10 v1.4e Standard LaTeX Graphics (DPC,SPQR)
- (D:\MikTEX\tex/latex/graphics\trig.sty
+
+(D:\MikTEX\tex/latex/graphics\trig.sty
 Package: trig 2021/08/11 v1.11 sin cos tan (DPC)
-) (D:\MikTEX\tex/latex/graphics-cfg\graphics.cfg
+)
+(D:\MikTEX\tex/latex/graphics-cfg\graphics.cfg
 File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
 )
 Package graphics Info: Driver file: pdftex.def on input line 107.
- (D:\MikTEX\tex/latex/graphics-def\pdftex.def
+
+(D:\MikTEX\tex/latex/graphics-def\pdftex.def
 File: pdftex.def 2022/09/22 v1.2b Graphics/color driver for pdftex
 ))
 \Gin@req@height=\dimen186
 \Gin@req@width=\dimen187
-) (D:\MikTEX\tex/latex/microtype\microtype.sty
+)
+(D:\MikTEX\tex/latex/microtype\microtype.sty
 Package: microtype 2026/03/01 v3.2d Micro-typographical refinements (RS)
- (D:\MikTEX\tex/latex/etoolbox\etoolbox.sty
+
+(D:\MikTEX\tex/latex/etoolbox\etoolbox.sty
 Package: etoolbox 2020/10/05 v2.5k e-TeX tools for LaTeX (JAW)
 \etb@tempcnta=\count284
 )
@@ -231,18 +255,22 @@ LaTeX Info: Redefining \textls on input line 1449.
 LaTeX Info: Redefining \microtypecontext on input line 2053.
 LaTeX Info: Redefining \textmicrotypecontext on input line 2070.
 \MT@listname@count=\count286
- (D:\MikTEX\tex/latex/microtype\microtype-pdftex.def
+
+(D:\MikTEX\tex/latex/microtype\microtype-pdftex.def
 File: microtype-pdftex.def 2026/03/01 v3.2d Definitions specific to pdftex (RS)
+
 LaTeX Info: Redefining \lsstyle on input line 944.
 LaTeX Info: Redefining \lslig on input line 944.
 \MT@outer@space=\skip54
 )
 Package microtype Info: Loading configuration file microtype.cfg.
- (D:\MikTEX\tex/latex/microtype\microtype.cfg
+
+(D:\MikTEX\tex/latex/microtype\microtype.cfg
 File: microtype.cfg 2026/03/01 v3.2d microtype main configuration file (RS)
 )
 LaTeX Info: Redefining \microtypesetup on input line 3065.
-) (D:\MikTEX\tex/latex/tools\array.sty
+)
+(D:\MikTEX\tex/latex/tools\array.sty
 Package: array 2023/10/16 v2.5g Tabular extension package (FMi)
 \col@sep=\dimen189
 \ar@mcellbox=\box56
@@ -251,19 +279,23 @@ Package: array 2023/10/16 v2.5g Tabular extension package (FMi)
 \extratabsurround=\skip55
 \backup@length=\skip56
 \ar@cellbox=\box57
-) (D:\MikTEX\tex/latex/multirow\multirow.sty
+)
+(D:\MikTEX\tex/latex/multirow\multirow.sty
 Package: multirow 2024/11/12 v2.9 Span multiple rows of a table
 \multirow@colwidth=\skip57
 \multirow@cntb=\count287
 \multirow@dima=\skip58
 \bigstrutjot=\dimen191
-) (D:\MikTEX\tex/latex/xcolor\xcolor.sty
+)
+(D:\MikTEX\tex/latex/xcolor\xcolor.sty
 Package: xcolor 2023/11/15 v3.01 LaTeX color extensions (UK)
- (D:\MikTEX\tex/latex/graphics-cfg\color.cfg
+
+(D:\MikTEX\tex/latex/graphics-cfg\color.cfg
 File: color.cfg 2016/01/02 v1.6 sample color configuration
 )
 Package xcolor Info: Driver file: pdftex.def on input line 274.
- (D:\MikTEX\tex/latex/graphics\mathcolor.ltx)
+
+(D:\MikTEX\tex/latex/graphics\mathcolor.ltx)
 Package xcolor Info: Model `cmy' substituted by `cmy0' on input line 1350.
 Package xcolor Info: Model `hsb' substituted by `rgb' on input line 1354.
 Package xcolor Info: Model `RGB' extended on input line 1366.
@@ -273,11 +305,14 @@ Package xcolor Info: Model `tHsb' substituted by `hsb' on input line 1370.
 Package xcolor Info: Model `HSB' substituted by `hsb' on input line 1371.
 Package xcolor Info: Model `Gray' substituted by `gray' on input line 1372.
 Package xcolor Info: Model `wave' substituted by `hsb' on input line 1373.
-) (D:\MikTEX\tex/latex/placeins\placeins.sty
+)
+(D:\MikTEX\tex/latex/placeins\placeins.sty
 Package: placeins 2005/04/18  v 2.2
-) (D:\MikTEX\tex/latex/dblfloatfix\dblfloatfix.sty
+)
+(D:\MikTEX\tex/latex/dblfloatfix\dblfloatfix.sty
 Package: dblfloatfix 2012/12/31 v1.0a (JAW)
- (D:\MikTEX\tex/latex/base\fixltx2e.sty
+
+(D:\MikTEX\tex/latex/base\fixltx2e.sty
 Package: fixltx2e 2016/12/29 v2.1a fixes to LaTeX (obsolete)
 Applying: [2015/01/01] Old fixltx2e package on input line 46.
 
@@ -301,38 +336,54 @@ Package: float 2001/11/08 v1.3d Float enhancements (AL)
 LaTeX Info: Redefining \cite on input line 302.
 LaTeX Info: Redefining \nocite on input line 332.
 Package: cite 2015/02/27  v 5.5
-) (D:\MikTEX\tex/latex/hyperref\hyperref.sty
+)
+(D:\MikTEX\tex/latex/hyperref\hyperref.sty
 Package: hyperref 2023-11-26 v7.01g Hypertext links for LaTeX
- (D:\MikTEX\tex/generic/iftex\iftex.sty
+
+(D:\MikTEX\tex/generic/iftex\iftex.sty
 Package: iftex 2022/02/03 v1.0f TeX engine tests
-) (D:\MikTEX\tex/generic/infwarerr\infwarerr.sty
+)
+(D:\MikTEX\tex/generic/infwarerr\infwarerr.sty
 Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
-) (D:\MikTEX\tex/latex/kvsetkeys\kvsetkeys.sty
+)
+(D:\MikTEX\tex/latex/kvsetkeys\kvsetkeys.sty
 Package: kvsetkeys 2022-10-05 v1.19 Key value parser (HO)
-) (D:\MikTEX\tex/generic/kvdefinekeys\kvdefinekeys.sty
+)
+(D:\MikTEX\tex/generic/kvdefinekeys\kvdefinekeys.sty
 Package: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)
-) (D:\MikTEX\tex/generic/pdfescape\pdfescape.sty
+)
+(D:\MikTEX\tex/generic/pdfescape\pdfescape.sty
 Package: pdfescape 2019/12/09 v1.15 Implements pdfTeX's escape features (HO)
- (D:\MikTEX\tex/generic/ltxcmds\ltxcmds.sty
+
+(D:\MikTEX\tex/generic/ltxcmds\ltxcmds.sty
 Package: ltxcmds 2023-12-04 v1.26 LaTeX kernel commands for general use (HO)
-) (D:\MikTEX\tex/generic/pdftexcmds\pdftexcmds.sty
-Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO)
+)
+(D:\MikTEX\tex/generic/pdftexcmds\pdftexcmds.sty
+Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO
+)
 Package pdftexcmds Info: \pdf@primitive is available.
 Package pdftexcmds Info: \pdf@ifprimitive is available.
 Package pdftexcmds Info: \pdfdraftmode found.
-)) (D:\MikTEX\tex/latex/hycolor\hycolor.sty
+))
+(D:\MikTEX\tex/latex/hycolor\hycolor.sty
 Package: hycolor 2020-01-27 v1.10 Color options for hyperref/bookmark (HO)
-) (D:\MikTEX\tex/latex/letltxmacro\letltxmacro.sty
+)
+(D:\MikTEX\tex/latex/letltxmacro\letltxmacro.sty
 Package: letltxmacro 2019/12/03 v1.6 Let assignment for LaTeX macros (HO)
-) (D:\MikTEX\tex/latex/auxhook\auxhook.sty
+)
+(D:\MikTEX\tex/latex/auxhook\auxhook.sty
 Package: auxhook 2019-12-17 v1.6 Hooks for auxiliary files (HO)
-) (D:\MikTEX\tex/latex/hyperref\nameref.sty
+)
+(D:\MikTEX\tex/latex/hyperref\nameref.sty
 Package: nameref 2023-11-26 v2.56 Cross-referencing by name of section
- (D:\MikTEX\tex/latex/refcount\refcount.sty
+
+(D:\MikTEX\tex/latex/refcount\refcount.sty
 Package: refcount 2019/12/15 v3.6 Data extraction from label references (HO)
-) (D:\MikTEX\tex/generic/gettitlestring\gettitlestring.sty
+)
+(D:\MikTEX\tex/generic/gettitlestring\gettitlestring.sty
 Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
- (D:\MikTEX\tex/latex/kvoptions\kvoptions.sty
+
+(D:\MikTEX\tex/latex/kvoptions\kvoptions.sty
 Package: kvoptions 2022-06-15 v3.15 Key value format for package options (HO)
 ))
 \c@section@level=\count291
@@ -340,15 +391,18 @@ Package: kvoptions 2022-06-15 v3.15 Key value format for package options (HO)
 \@linkdim=\dimen192
 \Hy@linkcounter=\count292
 \Hy@pagecounter=\count293
- (D:\MikTEX\tex/latex/hyperref\pd1enc.def
+
+(D:\MikTEX\tex/latex/hyperref\pd1enc.def
 File: pd1enc.def 2023-11-26 v7.01g Hyperref: PDFDocEncoding definition (HO)
 Now handling font encoding PD1 ...
 ... no UTF-8 mapping file for font encoding PD1
-) (D:\MikTEX\tex/generic/intcalc\intcalc.sty
+)
+(D:\MikTEX\tex/generic/intcalc\intcalc.sty
 Package: intcalc 2019/12/15 v1.3 Expandable calculations with integers (HO)
 )
 \Hy@SavedSpaceFactor=\count294
- (D:\MikTEX\tex/latex/hyperref\puenc.def
+
+(D:\MikTEX\tex/latex/hyperref\puenc.def
 File: puenc.def 2023-11-26 v7.01g Hyperref: PDF Unicode definition (HO)
 Now handling font encoding PU ...
 ... no UTF-8 mapping file for font encoding PU
@@ -367,10 +421,13 @@ Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
 )
 LaTeX Info: Redefining \url on input line 4786.
 \XeTeXLinkMargin=\dimen193
- (D:\MikTEX\tex/generic/bitset\bitset.sty
+
+(D:\MikTEX\tex/generic/bitset\bitset.sty
 Package: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)
- (D:\MikTEX\tex/generic/bigintcalc\bigintcalc.sty
-Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO)
+
+(D:\MikTEX\tex/generic/bigintcalc\bigintcalc.sty
+Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO
+)
 ))
 \Fld@menulength=\count296
 \Field@Width=\dimen194
@@ -382,7 +439,8 @@ Package hyperref Info: backreferencing OFF on input line 6080.
 Package hyperref Info: Link coloring OFF on input line 6085.
 Package hyperref Info: Link coloring with OCG OFF on input line 6090.
 Package hyperref Info: PDF/A mode OFF on input line 6095.
- (D:\MikTEX\tex/latex/base\atbegshi-ltx.sty
+
+(D:\MikTEX\tex/latex/base\atbegshi-ltx.sty
 Package: atbegshi-ltx 2021/01/10 v1.0c Emulation of the original atbegshi
 package with kernel methods
 )
@@ -391,25 +449,33 @@ package with kernel methods
 \c@Hfootnote=\count299
 )
 Package hyperref Info: Driver (autodetected): hpdftex.
- (D:\MikTEX\tex/latex/hyperref\hpdftex.def
+
+(D:\MikTEX\tex/latex/hyperref\hpdftex.def
 File: hpdftex.def 2023-11-26 v7.01g Hyperref driver for pdfTeX
- (D:\MikTEX\tex/latex/base\atveryend-ltx.sty
-Package: atveryend-ltx 2020/08/19 v1.0a Emulation of the original atveryend package
+
+(D:\MikTEX\tex/latex/base\atveryend-ltx.sty
+Package: atveryend-ltx 2020/08/19 v1.0a Emulation of the original atveryend pac
+kage
 with kernel methods
 )
 \Fld@listcount=\count300
 \c@bookmark@seq@number=\count301
- (D:\MikTEX\tex/latex/rerunfilecheck\rerunfilecheck.sty
+
+(D:\MikTEX\tex/latex/rerunfilecheck\rerunfilecheck.sty
 Package: rerunfilecheck 2025-06-21 v1.11 Rerun checks for auxiliary files (HO)
- (D:\MikTEX\tex/generic/uniquecounter\uniquecounter.sty
+
+(D:\MikTEX\tex/generic/uniquecounter\uniquecounter.sty
 Package: uniquecounter 2019/12/15 v1.4 Provide unlimited unique counter (HO)
 )
-Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 284.
+Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 2
+84.
 )
 \Hy@SectionHShift=\skip59
-) (D:\MikTEX\tex/latex/tools\xspace.sty
+)
+(D:\MikTEX\tex/latex/tools\xspace.sty
 Package: xspace 2014/10/28 v1.13 Space after command names (DPC,MH)
-) (D:\MikTEX\tex/latex/l3backend\l3backend-pdftex.def
+)
+(D:\MikTEX\tex/latex/l3backend\l3backend-pdftex.def
 File: l3backend-pdftex.def 2024-01-04 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count302
 \l__pdf_internal_box=\box60
@@ -451,8 +517,10 @@ LaTeX Font Info:    ... okay on input line 56.
 \everyMPtoPDFconversion=\toks30
 ) (D:\MikTEX\tex/latex/epstopdf-pkg\epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
-Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
- (D:\MikTEX\tex/latex/00miktex\epstopdf-sys.cfg
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
+85.
+
+(D:\MikTEX\tex/latex/00miktex\epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 ))
 LaTeX Info: Redefining \microtypecontext on input line 56.
@@ -472,7 +540,8 @@ Package microtype Info: Patching command `\showhyphens'.
 Package microtype Info: No adjustment of tracking.
 Package microtype Info: No adjustment of interword spacing.
 Package microtype Info: No adjustment of character kerning.
- (D:\MikTEX\tex/latex/microtype\mt-ptm.cfg
+
+(D:\MikTEX\tex/latex/microtype\mt-ptm.cfg
 File: mt-ptm.cfg 2006/04/20 v1.7 microtype config. file: Times (RS)
 )
 Package hyperref Info: Link coloring OFF on input line 56.
@@ -480,82 +549,107 @@ Package hyperref Info: Link coloring OFF on input line 56.
 \@outlinefile=\write3
 \openout3 = `main.out'.
 
- [1{C:/Users/MacOS/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}{D:/MikTEX/fonts/enc/dvips/base/8r.enc}
+ [1{C:/Users/MacOS/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}{D:/MikTEX/
+fonts/enc/dvips/base/8r.enc}
 
 
 ] [2] (D:\MikTEX\tex/latex/microtype\mt-cmr.cfg
-File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman (RS)
+File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman 
+(RS)
 )
-LaTeX Font Info:    Trying to load font information for U+msa on input line 315.
- (D:\MikTEX\tex/latex/amsfonts\umsa.fd
+LaTeX Font Info:    Trying to load font information for U+msa on input line 305
+.
+
+(D:\MikTEX\tex/latex/amsfonts\umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
-) (D:\MikTEX\tex/latex/microtype\mt-msa.cfg
+)
+(D:\MikTEX\tex/latex/microtype\mt-msa.cfg
 File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 315.
- (D:\MikTEX\tex/latex/amsfonts\umsb.fd
+LaTeX Font Info:    Trying to load font information for U+msb on input line 305
+.
+
+(D:\MikTEX\tex/latex/amsfonts\umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
-) (D:\MikTEX\tex/latex/microtype\mt-msb.cfg
+)
+(D:\MikTEX\tex/latex/microtype\mt-msb.cfg
 File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 )
-<figures/sturcture_new.png, id=185, 2055.68pt x 989.6975pt>
+<figures/sturcture_new.png, id=192, 2055.68pt x 989.6975pt>
 File: figures/sturcture_new.png Graphic file (type png)
 <use figures/sturcture_new.png>
-Package pdftex.def Info: figures/sturcture_new.png  used on input line 325.
+Package pdftex.def Info: figures/sturcture_new.png  used on input line 317.
 (pdftex.def)             Requested size: 516.0pt x 248.42047pt.
  [3] [4 <./figures/sturcture_new.png>]
-<figures/fig2_hu2025_protocol_comparison.pdf, id=230, 437.9562pt x 323.76959pt>
+<figures/fig2_hu2025_protocol_comparison.pdf, id=233, 437.9562pt x 323.76959pt>
+
 File: figures/fig2_hu2025_protocol_comparison.pdf Graphic file (type pdf)
 <use figures/fig2_hu2025_protocol_comparison.pdf>
-Package pdftex.def Info: figures/fig2_hu2025_protocol_comparison.pdf  used on input line 605.
+Package pdftex.def Info: figures/fig2_hu2025_protocol_comparison.pdf  used on i
+nput line 600.
 (pdftex.def)             Requested size: 252.0pt x 186.29451pt.
- [5 <./figures/fig2_hu2025_protocol_comparison.pdf>]
-<figures/fig_zero_delay_latency_extension.pdf, id=247, 493.36319pt x 175.6161pt>
+<figures/fig_zero_delay_latency_extension.pdf, id=235, 493.36319pt x 175.6161pt
+>
 File: figures/fig_zero_delay_latency_extension.pdf Graphic file (type pdf)
 <use figures/fig_zero_delay_latency_extension.pdf>
-Package pdftex.def Info: figures/fig_zero_delay_latency_extension.pdf  used on input line 650.
+Package pdftex.def Info: figures/fig_zero_delay_latency_extension.pdf  used on 
+input line 645.
 (pdftex.def)             Requested size: 454.08252pt x 161.63844pt.
-<figures/fig2_v13_main_evidence.pdf, id=251, 493.36319pt x 180.4341pt>
+ [5 <./figures/fig2_hu2025_protocol_comparison.pdf>]
+<figures/fig2_v13_main_evidence.pdf, id=254, 493.36319pt x 180.4341pt>
 File: figures/fig2_v13_main_evidence.pdf Graphic file (type pdf)
 <use figures/fig2_v13_main_evidence.pdf>
-Package pdftex.def Info: figures/fig2_v13_main_evidence.pdf  used on input line 678.
+Package pdftex.def Info: figures/fig2_v13_main_evidence.pdf  used on input line
+ 674.
 (pdftex.def)             Requested size: 454.08252pt x 166.07295pt.
-<figures/fig3_v13_component_analysis.pdf, id=252, 493.36319pt x 175.6161pt>
+<figures/fig3_v13_component_analysis.pdf, id=255, 493.36319pt x 175.6161pt>
 File: figures/fig3_v13_component_analysis.pdf Graphic file (type pdf)
 <use figures/fig3_v13_component_analysis.pdf>
-Package pdftex.def Info: figures/fig3_v13_component_analysis.pdf  used on input line 688.
+Package pdftex.def Info: figures/fig3_v13_component_analysis.pdf  used on input
+ line 685.
 (pdftex.def)             Requested size: 454.08252pt x 161.63844pt.
- [6]
-<figures/fig_simulator_scenes.png, id=270, 2055.68pt x 955.57pt>
+ [6 <./figures/fig_zero_delay_latency_extension.pdf>]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [7 <./figures/fig2_v13_main_evidence.pdf> <./figures/fig3_v13_component_analys
+is.pdf>]
+<figures/fig_simulator_scenes.png, id=284, 2055.68pt x 955.57pt>
 File: figures/fig_simulator_scenes.png Graphic file (type png)
 <use figures/fig_simulator_scenes.png>
-Package pdftex.def Info: figures/fig_simulator_scenes.png  used on input line 885.
+Package pdftex.def Info: figures/fig_simulator_scenes.png  used on input line 8
+86.
 (pdftex.def)             Requested size: 516.0pt x 239.85425pt.
- [7 <./figures/fig_zero_delay_latency_extension.pdf> <./figures/fig2_v13_main_evidence.pdf>]
-Underfull \vbox (badness 1910) has occurred while \output is active []
 
- [8 <./figures/fig3_v13_component_analysis.pdf>] (main.bbl [9 <./figures/fig_simulator_scenes.png>]) [10
-
-] (main.aux)
+[8] (main.bbl [9 <./figures/fig_simulator_scenes.png>]) [10] (main.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-04>
  ***********
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: 438CAE555E609C784DFD4EEBFE99A646;5346.
+(rerunfilecheck)             Checksum: 004E50B3A678F1592EB85CECE9E35952;5346.
  ) 
 Here is how much of TeX's memory you used:
- 14019 strings out of 474486
- 218235 string characters out of 5760170
- 1950542 words of memory out of 5000000
+ 14018 strings out of 474486
+ 218153 string characters out of 5760170
+ 1949542 words of memory out of 5000000
  35632 multiletter control sequences out of 15000+600000
  617443 words of font info for 357 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 75i,12n,79p,1034b,612s stack positions out of 10000i,1000n,20000p,200000b,200000s
-<D:/MikTEX/fonts/type1/public/amsfonts/cm/cmex10.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmmi5.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmmi6.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmmi7.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmmi8.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmr10.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmr5.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmr7.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmsy7.pfb><D:/MikTEX/fonts/type1/public/amsfonts/symbols/msbm10.pfb><D:/MikTEX/fonts/type1/urw/times/utmb8a.pfb><D:/MikTEX/fonts/type1/urw/times/utmbi8a.pfb><D:/MikTEX/fonts/type1/urw/times/utmr8a.pfb><D:/MikTEX/fonts/type1/urw/times/utmri8a.pfb>
-Output written on main.pdf (10 pages, 1375292 bytes).
+ 75i,12n,79p,1003b,612s stack positions out of 10000i,1000n,20000p,200000b,200000s
+<D:/MikTEX/fonts/type1/public/amsfonts/cm/cmex10.pfb><D:/MikTEX/fonts/type1/p
+ublic/amsfonts/cm/cmmi10.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmmi5.pf
+b><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmmi6.pfb><D:/MikTEX/fonts/type1/pu
+blic/amsfonts/cm/cmmi7.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmmi8.pfb>
+<D:/MikTEX/fonts/type1/public/amsfonts/cm/cmr10.pfb><D:/MikTEX/fonts/type1/publ
+ic/amsfonts/cm/cmr5.pfb><D:/MikTEX/fonts/type1/public/amsfonts/cm/cmr7.pfb><D:/
+MikTEX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><D:/MikTEX/fonts/type1/public/
+amsfonts/cm/cmsy7.pfb><D:/MikTEX/fonts/type1/public/amsfonts/symbols/msbm10.pfb
+><D:/MikTEX/fonts/type1/urw/times/utmb8a.pfb><D:/MikTEX/fonts/type1/urw/times/u
+tmbi8a.pfb><D:/MikTEX/fonts/type1/urw/times/utmr8a.pfb><D:/MikTEX/fonts/type1/u
+rw/times/utmri8a.pfb>
+Output written on main.pdf (10 pages, 1377758 bytes).
 PDF statistics:
- 410 PDF objects out of 1000 (max. 8388607)
- 97 named destinations out of 1000 (max. 500000)
+ 411 PDF objects out of 1000 (max. 8388607)
+ 98 named destinations out of 1000 (max. 500000)
  60151 words of extra memory for PDF output out of 61914 (max. 10000000)
 
