@@ -1,0 +1,144 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{bst:etal}
+\citation{wen2023dilu,xu2024drivegpt4,shao2024lmdrive,sima2024drivelm,mao2023gptdriver,tvtVLNavigationCAV2025,tvtDrivingKnowledge2026,xin2026netroller}
+\citation{hu2024fasionad,zhang2025adadrive,chen2026gvlm}
+\citation{tvtBehavioralAttention2026}
+\citation{chen2024asyncdriver,xin2026netroller}
+\citation{li2026dualdrive}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:introduction}{{I}{1}{Introduction}{section.1}{}}
+\citation{wen2023dilu}
+\citation{chen2024drivingllms}
+\citation{tvtVLNavigationCAV2025,tvtVLMDriver2026}
+\citation{tvtDrivingKnowledge2026}
+\citation{titsPolicyTransfer2025}
+\citation{mao2023gptdriver}
+\citation{tvtCtrail2026}
+\citation{wang2023drivedreamer,min2024driveworld,zheng2024genad,liao2025diffusiondrive}
+\citation{mei2024leapad,ma2026leapvad,hu2024fasionad}
+\citation{li2026dualdrive,xin2026netroller}
+\citation{zhang2025adadrive,luo2025adathinkdrive}
+\citation{chen2026gvlm}
+\citation{tvtBehavioralAttention2026}
+\citation{russell1991metareasoning,boddy1994deliberation,zilberstein1996anytime,cserna2017planning}
+\citation{elboher2023concurrent}
+\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{2}{section.2}\protected@file@percent }
+\newlabel{sec:related}{{II}{2}{Related Work}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Language-Conditioned and Generative Driving}{2}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Dual Process Reasoning and Selective Computation}{2}{subsection.2.2}\protected@file@percent }
+\citation{chen2024asyncdriver}
+\citation{xin2026netroller}
+\citation{tabuada2007event,li2021edgecomputing}
+\citation{molnar2023delay}
+\citation{chen2022simplexdrive}
+\citation{shalevshwartz2017rss,liniger2019viability}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Runtime Safety, Delay, and Viability}{3}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {III}Recoverability-Gated Deliberation}{3}{section.3}\protected@file@percent }
+\newlabel{sec:method}{{III}{3}{Recoverability-Gated Deliberation}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Query and Release Process}{3}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Offline Measure of Corrective Opportunity}{3}{subsection.3.2}\protected@file@percent }
+\newlabel{eq:rvod}{{1}{3}{Offline Measure of Corrective Opportunity}{equation.3.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces RGD architecture and information flow. Query admission evaluates delay feasibility, action support, cost advantage, and scene demand. The optional driving-memory block supplies retrieved context and was disabled in the frozen evaluations. Release-validation stage~1 invokes the shared action mapper used by the fast path. The returned action is then validated before the unified safety shield. Matched rollouts from release snapshots provide the offline R-VoD labels.}}{4}{figure.1}\protected@file@percent }
+\newlabel{fig:overview}{{1}{4}{RGD architecture and information flow. Query admission evaluates delay feasibility, action support, cost advantage, and scene demand. The optional driving-memory block supplies retrieved context and was disabled in the frozen evaluations. Release-validation stage~1 invokes the shared action mapper used by the fast path. The returned action is then validated before the unified safety shield. Matched rollouts from release snapshots provide the offline R-VoD labels}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Query Admission}{4}{subsection.3.3}\protected@file@percent }
+\newlabel{eq:gate_factors}{{2}{4}{Query Admission}{equation.3.2}{}}
+\citation{lesort2018highwayenv}
+\citation{li2023metadrive}
+\citation{qwen3technicalreport}
+\citation{kou2025padriver}
+\citation{tvtVLNavigationCAV2025}
+\newlabel{eq:query_admission}{{3}{5}{Query Admission}{equation.3.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-D}}Release Validation}{5}{subsection.3.4}\protected@file@percent }
+\newlabel{eq:release_stages}{{4}{5}{Release Validation}{equation.3.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Experiments and Discussion}{5}{section.4}\protected@file@percent }
+\newlabel{sec:experiments}{{IV}{5}{Experiments and Discussion}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Experimental Setup}{5}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}System-Level Context}{5}{subsection.4.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Success-rate context in the highway-env settings of Hu et al. GPT-4, GRAD, and DeepSeek-R1 are source-reported values; their placement with RGD is not a head-to-head statistical comparison.}}{5}{figure.2}\protected@file@percent }
+\newlabel{fig:hu_protocol}{{2}{5}{Success-rate context in the highway-env settings of Hu et al. GPT-4, GRAD, and DeepSeek-R1 are source-reported values; their placement with RGD is not a head-to-head statistical comparison}{figure.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Task-level context in the PADriver setting.}}{6}{table.1}\protected@file@percent }
+\newlabel{tab:padriver}{{I}{6}{Task-level context in the PADriver setting}{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces RGD operating metrics in the settings of Hu et al.}}{6}{table.2}\protected@file@percent }
+\newlabel{tab:hu_protocol}{{II}{6}{RGD operating metrics in the settings of Hu et al}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Delay-Controlled Allocation and Component Evidence}{6}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}1}Zero Added Delay Reference}{6}{subsubsection.4.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}2}Allocation With a 1.7-s Added Delay}{6}{subsubsection.4.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}3}Response Validation and Component Effects}{6}{subsubsection.4.3.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Results with different LLM backends at a 1.7-s added delay.}}{6}{table.3}\protected@file@percent }
+\newlabel{tab:multi_llm}{{III}{6}{Results with different LLM backends at a 1.7-s added delay}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Reasoner-Interface Robustness}{6}{subsection.4.4}\protected@file@percent }
+\citation{titsPolicyTransfer2025}
+\citation{tvtBehavioralAttention2026}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Zero-delay policy comparison and RGD delay sweep: (a) slow-path requests, (b) runtime, and (c) distance and requests versus added delay. Request counts are totals across 30 seeds; error bars denote 95\% seed-bootstrap confidence intervals for runtime and distance.}}{7}{figure.3}\protected@file@percent }
+\newlabel{fig:zero_delay_extension}{{3}{7}{Zero-delay policy comparison and RGD delay sweep: (a) slow-path requests, (b) runtime, and (c) distance and requests versus added delay. Request counts are totals across 30 seeds; error bars denote 95\% seed-bootstrap confidence intervals for runtime and distance}{figure.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces RGD validation at a 1.7-s added delay: (a) responses after each validation stage and (b) recovery-cost advantages and final outcomes for 28 state-valid responses. Stage counts aggregate the 30-seed main cohort; the dashed line denotes the release margin $\tau _R$.}}{7}{figure.4}\protected@file@percent }
+\newlabel{fig:operating_profile}{{4}{7}{RGD validation at a 1.7-s added delay: (a) responses after each validation stage and (b) recovery-cost advantages and final outcomes for 28 state-valid responses. Stage counts aggregate the 30-seed main cohort; the dashed line denotes the release margin $\tau _R$}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Evaluation Across Traffic and Simulators}{7}{subsection.4.5}\protected@file@percent }
+\newlabel{subsec:traffic}{{\mbox  {IV-E}1}{7}{Traffic Structure}{subsubsection.4.5.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-E}1}Traffic Structure}{7}{subsubsection.4.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-E}2}Simulator Transfer}{7}{subsubsection.4.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Evaluation on Additional Scenario Families}{7}{subsection.4.6}\protected@file@percent }
+\citation{titsPolicyTransfer2025}
+\citation{tvtBehavioralAttention2026}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces RGD components: (a) slow-path requests, (b) states selected only by each ablation, and (c) corrective-state-rate differences computed as Full RGD minus ablation with 95\% confidence intervals. Counts aggregate the separate 20-seed mechanism cohort.}}{8}{figure.5}\protected@file@percent }
+\newlabel{fig:components}{{5}{8}{RGD components: (a) slow-path requests, (b) states selected only by each ablation, and (c) corrective-state-rate differences computed as Full RGD minus ablation with 95\% confidence intervals. Counts aggregate the separate 20-seed mechanism cohort}{figure.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces RGD outcomes under lane and density settings.}}{8}{table.4}\protected@file@percent }
+\newlabel{tab:traffic_stress}{{IV}{8}{RGD outcomes under lane and density settings}{table.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Compound-hazard task context in MetaDrive.}}{8}{table.5}\protected@file@percent }
+\newlabel{tab:policy_transfer}{{V}{8}{Compound-hazard task context in MetaDrive}{table.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Maneuver and traffic-density task context.}}{8}{table.6}\protected@file@percent }
+\newlabel{tab:bua_transfer}{{VI}{8}{Maneuver and traffic-density task context}{table.6}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-F}1}Compound Hazard Scenes}{8}{subsubsection.4.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-F}2}Maneuver and Density Changes}{8}{subsubsection.4.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Discussion}{8}{subsection.4.7}\protected@file@percent }
+\bibstyle{IEEEtran}
+\bibdata{references}
+\bibcite{wen2023dilu}{1}
+\bibcite{xu2024drivegpt4}{2}
+\bibcite{shao2024lmdrive}{3}
+\bibcite{sima2024drivelm}{4}
+\bibcite{mao2023gptdriver}{5}
+\bibcite{tvtVLNavigationCAV2025}{6}
+\bibcite{tvtDrivingKnowledge2026}{7}
+\bibcite{xin2026netroller}{8}
+\bibcite{hu2024fasionad}{9}
+\bibcite{zhang2025adadrive}{10}
+\bibcite{chen2026gvlm}{11}
+\bibcite{tvtBehavioralAttention2026}{12}
+\bibcite{chen2024asyncdriver}{13}
+\bibcite{li2026dualdrive}{14}
+\bibcite{chen2024drivingllms}{15}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Representative frozen closed-loop states under the shared RGD interface. The upper row shows highway-env: (a) highway, (b) merge, (c) roundabout, and (d) intersection. The lower row shows recorded-state reconstructions of the corresponding MetaDrive scenes: (e) highway, (f) merge, (g) roundabout, and (h) intersection. The ego vehicle is shown in green in every panel.}}{9}{figure.6}\protected@file@percent }
+\newlabel{fig:simulator_scenes}{{6}{9}{Representative frozen closed-loop states under the shared RGD interface. The upper row shows highway-env: (a) highway, (b) merge, (c) roundabout, and (d) intersection. The lower row shows recorded-state reconstructions of the corresponding MetaDrive scenes: (e) highway, (f) merge, (g) roundabout, and (h) intersection. The ego vehicle is shown in green in every panel}{figure.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion}{9}{section.5}\protected@file@percent }
+\newlabel{sec:conclusion}{{V}{9}{Conclusion}{section.5}{}}
+\@writefile{toc}{\contentsline {section}{References}{9}{section*.1}\protected@file@percent }
+\bibcite{tvtVLMDriver2026}{16}
+\bibcite{titsPolicyTransfer2025}{17}
+\bibcite{tvtCtrail2026}{18}
+\bibcite{wang2023drivedreamer}{19}
+\bibcite{min2024driveworld}{20}
+\bibcite{zheng2024genad}{21}
+\bibcite{liao2025diffusiondrive}{22}
+\bibcite{mei2024leapad}{23}
+\bibcite{ma2026leapvad}{24}
+\bibcite{luo2025adathinkdrive}{25}
+\bibcite{russell1991metareasoning}{26}
+\bibcite{boddy1994deliberation}{27}
+\bibcite{zilberstein1996anytime}{28}
+\bibcite{cserna2017planning}{29}
+\bibcite{elboher2023concurrent}{30}
+\bibcite{tabuada2007event}{31}
+\bibcite{li2021edgecomputing}{32}
+\bibcite{molnar2023delay}{33}
+\bibcite{chen2022simplexdrive}{34}
+\bibcite{shalevshwartz2017rss}{35}
+\bibcite{liniger2019viability}{36}
+\bibcite{lesort2018highwayenv}{37}
+\bibcite{li2023metadrive}{38}
+\bibcite{qwen3technicalreport}{39}
+\bibcite{kou2025padriver}{40}
+\gdef \@abspage@last{10}

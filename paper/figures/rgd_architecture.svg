@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1152" viewBox="0 0 2048 1152">
+  <defs>
+    <marker id="arrowNavy" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 z" fill="#245b85"/>
+    </marker>
+    <marker id="arrowTeal" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 z" fill="#189d9a"/>
+    </marker>
+    <marker id="arrowAmber" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 z" fill="#d98a17"/>
+    </marker>
+    <marker id="arrowCoral" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 z" fill="#d66158"/>
+    </marker>
+    <style>
+      .title{font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;letter-spacing:.4px;fill:#ffffff}
+      .label{font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:700;fill:#26343e}
+      .small{font-family:Arial,Helvetica,sans-serif;font-size:14px;fill:#3d4c56}
+      .tiny{font-family:Arial,Helvetica,sans-serif;font-size:12px;fill:#52616a}
+      .eq{font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;fill:#26343e}
+      .arrowLabel{font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:600;fill:#31434f}
+      .outline{stroke:#35434d;stroke-width:2;vector-effect:non-scaling-stroke}
+    </style>
+  </defs>
+
+  <!-- paper -->
+  <rect width="2048" height="1152" fill="#ffffff"/>
+
+  <!-- Region A -->
+  <rect x="70" y="110" width="500" height="680" rx="12" fill="#fafdff" class="outline"/>
+  <rect x="70" y="110" width="500" height="46" rx="12" fill="#2d77a8"/>
+  <rect x="70" y="144" width="500" height="12" fill="#2d77a8"/>
+  <text x="92" y="140" class="title">1  OBSERVATION + MEMORY</text>
+
+  <!-- observation thumbnail -->
+  <rect x="100" y="185" width="175" height="150" rx="10" fill="#f1f2f3" class="outline"/>
+  <rect x="116" y="198" width="143" height="124" rx="5" fill="#dedfe0" stroke="#6e7b83" stroke-width="1.4"/>
+  <path d="M135 198 L155 322 M220 198 L200 322" stroke="#a2a9ad" stroke-width="2"/>
+  <path d="M177 201 L177 218 M177 229 L177 246 M177 257 L177 274 M177 285 L177 302" stroke="#ffffff" stroke-width="4" stroke-dasharray="6,6"/>
+  <rect x="167" y="254" width="21" height="38" rx="5" fill="#33424a"/>
+  <rect x="169" y="258" width="17" height="7" rx="2" fill="#8ba1ad"/>
+  <rect x="191" y="218" width="18" height="31" rx="4" fill="#5f6e75"/>
+  <rect x="145" y="229" width="18" height="30" rx="4" fill="#78858b"/>
+  <path d="M190 274 L211 274" stroke="#eb9b22" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="211" cy="274" r="11" fill="none" stroke="#eb9b22" stroke-width="2"/>
+  <text x="187.5" y="350" text-anchor="middle" class="label">observations</text>
+
+  <!-- observation -> state -->
+  <path d="M278 260 L302 260" fill="none" stroke="#245b85" stroke-width="3" marker-end="url(#arrowNavy)"/>
+
+  <!-- structured state -->
+  <rect x="310" y="185" width="215" height="150" rx="10" fill="#dceef9" class="outline"/>
+  <text x="327" y="218" class="label">Structured state s鈧?/text>
+  <g transform="translate(338 244)">
+    <rect x="0" y="0" width="20" height="64" rx="4" fill="#4a89b7"/>
+    <rect x="28" y="11" width="20" height="53" rx="4" fill="#7aaed0"/>
+    <rect x="56" y="22" width="20" height="42" rx="4" fill="#9ac6df"/>
+    <rect x="84" y="33" width="20" height="31" rx="4" fill="#bfddeb"/>
+    <path d="M119 7 H175 M119 27 H162 M119 47 H179" stroke="#517184" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- memory -->
+  <rect x="100" y="415" width="200" height="122" rx="10" fill="#d8f0ee" class="outline"/>
+  <g transform="translate(116 440)">
+    <ellipse cx="28" cy="4" rx="26" ry="8" fill="#78c5bd" stroke="#357e7d" stroke-width="1.5"/>
+    <rect x="2" y="4" width="52" height="48" fill="#78c5bd" stroke="#357e7d" stroke-width="1.5"/>
+    <ellipse cx="28" cy="52" rx="26" ry="8" fill="#78c5bd" stroke="#357e7d" stroke-width="1.5"/>
+    <path d="M13 18 H43 M13 32 H43" stroke="#e7fbf8" stroke-width="2"/>
+  </g>
+  <text x="183" y="458" class="label">Memory Bank</text>
+  <text x="183" y="482" class="small">history + actions</text>
+  <circle cx="273" cy="434" r="27" fill="#e7fbf8" stroke="#189d9a" stroke-width="2"/>
+  <text x="273" y="430" text-anchor="middle" class="tiny">t-1:t-k</text>
+  <text x="273" y="445" text-anchor="middle" class="tiny">鈫?/text>
+
+  <!-- memory injection -->
+  <path d="M307 476 C323 476 321 385 350 335" fill="none" stroke="#189d9a" stroke-width="3" marker-end="url(#arrowTeal)"/>
+  <text x="347" y="395" class="arrowLabel" fill="#189d9a">memory injection</text>
+
+  <!-- action set strip -->
+  <rect x="100" y="610" width="425" height="58" rx="10" fill="#e6f2fb" stroke="#2d77a8" stroke-width="2"/>
+  <g font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" fill="#245b85">
+    <rect x="112" y="622" width="75" height="34" rx="17" fill="#ffffff" stroke="#6ea4c8"/><text x="149" y="644" text-anchor="middle">LEFT</text>
+    <rect x="193" y="622" width="75" height="34" rx="17" fill="#ffffff" stroke="#6ea4c8"/><text x="230" y="644" text-anchor="middle">IDLE</text>
+    <rect x="274" y="622" width="75" height="34" rx="17" fill="#ffffff" stroke="#6ea4c8"/><text x="311" y="644" text-anchor="middle">RIGHT</text>
+    <rect x="355" y="622" width="75" height="34" rx="17" fill="#ffffff" stroke="#6ea4c8"/><text x="392" y="644" text-anchor="middle">FASTER</text>
+    <rect x="436" y="622" width="75" height="34" rx="17" fill="#ffffff" stroke="#6ea4c8"/><text x="473" y="644" text-anchor="middle">SLOWER</text>
+  </g>
+  <path d="M526 639 L606 639" fill="none" stroke="#245b85" stroke-width="3" marker-end="url(#arrowNavy)"/>
+  <text x="534" y="625" class="arrowLabel">s鈧?+ actions</text>
+
+  <!-- Region B -->
+  <rect x="600" y="110" width="775" height="680" rx="12" fill="#fbfdfb" class="outline"/>
+  <rect x="600" y="110" width="775" height="46" rx="12" fill="#72a47b"/>
+  <rect x="600" y="144" width="775" height="12" fill="#72a47b"/>
+  <text x="622" y="140" class="title">2  RGD ALLOCATION</text>
+
+  <!-- RGD allocator panel -->
+  <rect x="630" y="175" width="715" height="145" rx="10" fill="#e1f0e1" stroke="#6d9573" stroke-width="2"/>
+  <text x="650" y="204" class="label">RGD allocator</text>
+  <g>
+    <rect x="650" y="220" width="207" height="82" rx="8" fill="#f7fcf7" stroke="#9bb79f" stroke-width="1.5"/>
+    <circle cx="682" cy="250" r="18" fill="none" stroke="#5a8661" stroke-width="2.5"/>
+    <path d="M682 250 L682 238 M682 250 L692 256" stroke="#5a8661" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="710" y="248" class="label">L鈧?/text><text x="710" y="271" class="small">latency survival</text>
+
+    <rect x="878" y="220" width="207" height="82" rx="8" fill="#f7fcf7" stroke="#9bb79f" stroke-width="1.5"/>
+    <circle cx="911" cy="246" r="6" fill="#5a8661"/><circle cx="944" cy="246" r="6" fill="#5a8661"/><circle cx="928" cy="272" r="6" fill="#5a8661"/>
+    <path d="M917 248 L924 268 M938 248 L932 268" stroke="#5a8661" stroke-width="2"/>
+    <text x="970" y="248" class="label">A鈧?/text><text x="970" y="271" class="small">legal alternatives</text>
+
+    <rect x="1106" y="220" width="207" height="82" rx="8" fill="#f7fcf7" stroke="#9bb79f" stroke-width="1.5"/>
+    <rect x="1130" y="245" width="9" height="22" fill="#5a8661"/><rect x="1144" y="238" width="9" height="29" fill="#7aaf7f"/><rect x="1158" y="230" width="9" height="37" fill="#a6cca8"/>
+    <path d="M1126 274 H1173" stroke="#5a8661" stroke-width="2"/>
+    <text x="1185" y="248" class="label">H鈧?/text><text x="1185" y="271" class="small">recovery headroom</text>
+  </g>
+
+  <!-- opportunity card -->
+  <rect x="630" y="350" width="300" height="155" rx="10" fill="#f6faf6" class="outline"/>
+  <text x="650" y="380" class="label">opportunity</text>
+  <circle cx="656" cy="409" r="8" fill="none" stroke="#668d6d" stroke-width="2"/>
+  <path d="M656 409 L656 404 M656 409 L661 412" stroke="#668d6d" stroke-width="2"/>
+  <circle cx="694" cy="409" r="6" fill="#668d6d"/><circle cx="726" cy="409" r="6" fill="#668d6d"/><circle cx="710" cy="432" r="6" fill="#668d6d"/>
+  <path d="M700 411 L706 429 M720 411 L714 429" stroke="#668d6d" stroke-width="2"/>
+  <rect x="751" y="400" width="18" height="18" fill="#9bb79f"/><rect x="774" y="392" width="18" height="26" fill="#7daa83"/><rect x="797" y="384" width="18" height="34" fill="#5c8b64"/>
+  <path d="M650 454 H890" stroke="#8ea496" stroke-width="2"/>
+  <rect x="650" y="464" width="105" height="10" rx="5" fill="#b9d4bd"/><rect x="650" y="480" width="170" height="10" rx="5" fill="#8bb791"/><rect x="650" y="496" width="215" height="10" rx="5" fill="#5c9568"/>
+
+  <!-- equation card -->
+  <rect x="955" y="350" width="390" height="155" rx="10" fill="#f7faf7" class="outline"/>
+  <text x="978" y="385" class="eq">E鈧?= L鈧?鈭?A鈧?H鈧?</text>
+  <text x="978" y="430" class="eq">P鈧?= E鈧?G鈧?/text>
+  <path d="M977 448 H1316" stroke="#c8d7cb" stroke-width="1.5"/>
+
+  <!-- allocation ribbon and paths -->
+  <rect x="630" y="545" width="410" height="42" rx="9" fill="#c9e2cc" stroke="#6d9573" stroke-width="1.5"/>
+  <text x="650" y="572" class="label" fill="#3d7248">eligible</text>
+  <text x="804" y="572" class="label" fill="#3d7248">budget</text>
+  <text x="936" y="572" class="label" fill="#3d7248">cooldown</text>
+  <path d="M1043 566 L1072 566" fill="none" stroke="#245b85" stroke-width="3" marker-end="url(#arrowNavy)"/>
+
+  <rect x="630" y="612" width="300" height="92" rx="10" fill="#dceef9" class="outline"/>
+  <path d="M656 667 C675 636 702 636 721 667 C740 636 767 636 786 667" fill="none" stroke="#2d77a8" stroke-width="3"/>
+  <circle cx="656" cy="667" r="6" fill="#2d77a8"/><circle cx="786" cy="667" r="6" fill="#2d77a8"/>
+  <text x="810" y="658" class="label">Complete fast policy</text>
+
+  <polygon points="1055,649 1078,672 1055,695 1032,672" fill="#f4bd55" stroke="#c37b16" stroke-width="2"/>
+  <text x="1055" y="677" text-anchor="middle" class="tiny" fill="#6f4a0d">admit?</text>
+
+  <rect x="1105" y="612" width="240" height="92" rx="10" fill="#fff1d8" class="outline"/>
+  <circle cx="1133" cy="646" r="17" fill="#f4bd55" stroke="#be7c12" stroke-width="2"/>
+  <path d="M1125 649 Q1133 638 1141 649 M1125 653 H1141" fill="none" stroke="#7c5211" stroke-width="2"/>
+  <text x="1160" y="652" class="label">Qwen3-8B</text>
+  <text x="1160" y="678" class="small">slow proposal</text>
+  <text x="1105" y="730" class="small" font-style="italic" fill="#bd7414">compute, not motion</text>
+
+  <!-- branch arrows: fast solid bypasses slow, optional slow dashed -->
+  <path d="M930 658 C1030 658 1110 590 1402 285" fill="none" stroke="#245b85" stroke-width="4" marker-end="url(#arrowNavy)"/>
+  <path d="M1078 672 L1103 672" fill="none" stroke="#d98a17" stroke-width="3" stroke-dasharray="8,7" marker-end="url(#arrowAmber)"/>
+  <path d="M1345 658 C1380 640 1400 500 1408 330" fill="none" stroke="#d98a17" stroke-width="3" stroke-dasharray="8,7" marker-end="url(#arrowAmber)"/>
+
+  <!-- Region C -->
+  <rect x="1405" y="110" width="573" height="680" rx="12" fill="#fdfcff" class="outline"/>
+  <rect x="1405" y="110" width="573" height="46" rx="12" fill="#8c78bd"/>
+  <rect x="1405" y="144" width="573" height="12" fill="#8c78bd"/>
+  <text x="1427" y="140" class="title">3  RELEASE + EXECUTION</text>
+
+  <!-- release boundary -->
+  <rect x="1430" y="185" width="523" height="390" rx="15" fill="#f6f2ff" stroke="#8c78bd" stroke-width="2.5" stroke-dasharray="9,8"/>
+  <text x="1450" y="215" class="label" fill="#6d59a3">release state s鈧準?/text>
+  <path d="M1404 285 L1430 285" fill="none" stroke="#245b85" stroke-width="4" marker-end="url(#arrowNavy)"/>
+  <path d="M1404 330 L1430 330" fill="none" stroke="#d98a17" stroke-width="3" stroke-dasharray="8,7" marker-end="url(#arrowAmber)"/>
+
+  <!-- release modules -->
+  <rect x="1450" y="235" width="480" height="66" rx="9" fill="#e8e0fb" class="outline"/>
+  <path d="M1478 253 C1467 268 1476 283 1490 286 C1505 282 1511 269 1499 253 Z" fill="#9b87cf" stroke="#65529f" stroke-width="2"/><circle cx="1490" cy="265" r="4" fill="#f6f2ff"/>
+  <text x="1522" y="274" class="label">Query Map Q</text>
+
+  <rect x="1450" y="315" width="480" height="66" rx="9" fill="#e8e0fb" class="outline"/>
+  <rect x="1470" y="333" width="35" height="29" rx="4" fill="none" stroke="#65529f" stroke-width="2"/><path d="M1477 347 L1486 355 L1500 338" fill="none" stroke="#65529f" stroke-width="2.5"/>
+  <text x="1522" y="354" class="label">admissibility</text>
+
+  <rect x="1450" y="395" width="480" height="66" rx="9" fill="#e8e0fb" class="outline"/>
+  <path d="M1490 414 L1506 421 L1502 439 Q1490 452 1478 439 L1474 421 Z" fill="none" stroke="#65529f" stroke-width="2.5"/><path d="M1482 431 L1488 437 L1499 425" fill="none" stroke="#65529f" stroke-width="2.5"/>
+  <text x="1522" y="434" class="label">Shared RSS safety</text>
+
+  <rect x="1450" y="475" width="480" height="66" rx="9" fill="#e8e0fb" class="outline"/>
+  <circle cx="1490" cy="508" r="18" fill="none" stroke="#65529f" stroke-width="2.5"/><path d="M1474 508 H1506 M1490 492 V524" stroke="#65529f" stroke-width="2.5"/><circle cx="1490" cy="508" r="5" fill="#65529f"/>
+  <text x="1522" y="514" class="label">Actuation adapter</text>
+
+  <!-- validation chain and action -->
+  <path d="M1690 301 L1690 315 M1690 381 L1690 395 M1690 461 L1690 475" stroke="#6d59a3" stroke-width="3" marker-end="url(#arrowNavy)"/>
+  <rect x="1510" y="600" width="360" height="90" rx="12" fill="#d9f0d9" class="outline"/>
+  <circle cx="1542" cy="645" r="18" fill="#7caf7b" stroke="#4f7f54" stroke-width="2"/><path d="M1531 648 L1540 653 L1553 637" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <text x="1573" y="643" class="label">executed action a_exec</text>
+  <text x="1573" y="668" class="small">command + target speed</text>
+  <path d="M1690 541 L1690 600" stroke="#245b85" stroke-width="4" marker-end="url(#arrowNavy)"/>
+
+  <!-- reject/rewrite feedback -->
+  <path d="M1450 348 C1394 348 1386 540 1280 610 C1215 650 1115 650 930 650" fill="none" stroke="#d66158" stroke-width="3" marker-end="url(#arrowCoral)"/>
+  <text x="1310" y="532" class="arrowLabel" fill="#c6544d">reject / rewrite</text>
+
+  <!-- Lower asynchronous loop -->
+  <rect x="70" y="840" width="1908" height="240" rx="12" fill="#f1f3f5" class="outline"/>
+  <rect x="70" y="840" width="1908" height="46" rx="12" fill="#9da8b1"/>
+  <rect x="70" y="874" width="1908" height="12" fill="#9da8b1"/>
+  <text x="92" y="870" class="title">ASYNCHRONOUS CLOSED LOOP</text>
+
+  <!-- fast timeline -->
+  <path d="M150 942 H1850" stroke="#245b85" stroke-width="4" marker-end="url(#arrowNavy)"/>
+  <g stroke="#245b85" stroke-width="3">
+    <path d="M210 929 V955"/><path d="M560 929 V955"/><path d="M930 929 V955"/><path d="M1275 929 V955"/><path d="M1710 929 V955"/>
+  </g>
+  <g class="small" text-anchor="middle">
+    <text x="210" y="980">s鈧?/text><text x="560" y="980">s鈧溾倞鈧?/text><text x="930" y="980">s鈧溾倞鈧?/text><text x="1275" y="980">...</text><text x="1710" y="980">s鈧準?/text>
+  </g>
+  <text x="150" y="1010" class="small" fill="#245b85">fast policy recomputed every step</text>
+
+  <!-- slow in-flight line -->
+  <path d="M150 1033 H1370" stroke="#d98a17" stroke-width="3" stroke-dasharray="10,8" marker-end="url(#arrowAmber)"/>
+  <text x="150" y="1060" class="small" fill="#bd7414">slow proposal in flight - 1.7 s</text>
+
+  <!-- exterior feedback arrow to memory -->
+  <path d="M1690 690 C1690 760 1940 780 1940 812 C1940 824 1918 828 1885 828 H95 C82 828 78 816 78 800 V570 C78 540 87 520 100 520" fill="none" stroke="#189d9a" stroke-width="3" marker-end="url(#arrowTeal)"/>
+  <text x="1180" y="818" class="arrowLabel" fill="#189d9a">update history</text>
+
+  <!-- subtle visual separators -->
+  <path d="M585 170 V770 M1390 170 V770" stroke="#d8dee3" stroke-width="1" stroke-dasharray="3,6"/>
+</svg>
