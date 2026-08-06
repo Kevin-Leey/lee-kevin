@@ -23,3 +23,39 @@ simulation_duration: 20 # step
 vehicle_count: 15
 other_vehicle_type: "highway_env.vehicle.behavior.IDMVehicle" #other types are: "highway_env.vehicle.behavior.DefensiveVehicle" or "highway_env.vehicle.behavior.AggressiveVehicle"
 vehicles_density: 2.0
+
+############### Frozen paper-facing runtime contract ############
+# Runtime experiments merge these defaults with ``formal_protocol.yaml``.  Keep
+# the transport and transfer settings here as a readable, credential-free
+# mirror of the paper-facing contract.
+LLM_MAX_ATTEMPTS: 3
+LLM_RETRY_BACKOFF_S: 0.5
+rgd_latency_safety_reserve_s: 0.0
+
+slow_thinking:
+  risk_calibration:
+    enable: false
+
+MULTI_LLM_MODELS:
+  - provider: siliconflow
+    model: Qwen/Qwen3-8B
+    label: Qwen3-8B
+    base_url: https://api.siliconflow.cn/v1
+  - provider: siliconflow
+    model: Qwen/Qwen2.5-7B-Instruct
+    label: Qwen2.5-7B
+    base_url: https://api.siliconflow.cn/v1
+  - provider: siliconflow
+    model: Qwen/Qwen3.5-4B
+    label: Qwen3.5-4B
+    base_url: https://api.siliconflow.cn/v1
+  - provider: openai_compatible
+    model: gpt-5.6-sol
+    label: GPT-5.6-sol
+    base_url: https://bizdecipher.com/v1
+
+paper_evidence_protocol:
+  transfer:
+    table_label: Table VII
+    added_delay_s: 0.0
+    latency_safety_reserve_s: 0.0

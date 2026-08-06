@@ -62,6 +62,25 @@ def _portable_path(path: Path) -> str:
         return resolved.as_posix()
 
 
+def _prefix_execution_requested_action(event: Mapping[str, Any]) -> int:
+    """Recover the command at the pre-safety execution boundary."""
+    if bool(event.get("closed_loop_latency_release_event", False)):
+        if bool(event.get("closed_loop_release_opportunity_rejected", False)) or bool(
+            event.get("closed_loop_release_action_unavailable", False)
+        ):
+            return int(event["closed_loop_execution_state_fast_action"])
+        if bool(event.get("closed_loop_release_action_alignment_evaluated", False)) and bool(
+            event.get("closed_loop_release_action_alignment_pass", False)
+        ):
+            return int(event["closed_loop_release_action_alignment_slow_effective_action"])
+        return int(event.get("closed_loop_execution_state_fast_action", event.get("final_action", 1)))
+    if bool(event.get("closed_loop_latency_issuance_event", False)) and bool(
+        event.get("slow_request_valid_return", False)
+    ):
+        return int(event.get("closed_loop_latency_hold_action", event.get("final_action", 1)))
+    return int(event.get("closed_loop_latency_original_final_action", event.get("final_action", 1)))
+
+
 def summarize_release_branches(
     event: Mapping[str, Any],
     baseline: Mapping[str, Any],

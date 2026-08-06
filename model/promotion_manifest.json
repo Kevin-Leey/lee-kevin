@@ -1,0 +1,106 @@
+{
+  "updated": "2026-04-12 15:05",
+  "groups": {
+    "rgd_full_system": {
+      "updated": "2026-04-10 17:06",
+      "group": "rgd_full_system",
+      "source_bundle": "results/tiny_all_ablation_check_10seed_merged/quick_check/2026-04-10/16-35-30",
+      "source_adaptive_state_root": "",
+      "metrics": {
+        "collision_rate": 0.075,
+        "success_rate": 0.45,
+        "avg_driving_distance": 372.31,
+        "avg_runtime_per_frame": 0.5669,
+        "slow_call_rate": 0.3562,
+        "deliberative_slow_call_rate": 0.2162,
+        "slow_call_success_rate": 0.7722,
+        "budget_normalized_independent_high_risk_utility": 0.0,
+        "independent_selective_routing_gain": -0.1315,
+        "collapse_missed_rate": 0.0,
+        "slow_utility_failure_rate": 0.1859
+      },
+      "scope": {
+        "envs": [
+          "highway-v0",
+          "intersection-v0",
+          "merge-v0",
+          "roundabout-v0"
+        ],
+        "run_count": 40,
+        "env_count": 4
+      },
+      "compare_fields": [
+        "collision_rate",
+        "success_rate",
+        "avg_driving_distance",
+        "independent_selective_routing_gain",
+        "collapse_missed_rate",
+        "slow_utility_failure_rate",
+        "avg_runtime_per_frame"
+      ],
+      "reason": "current default model assets validated by the latest merged 10-seed frozen bundle and retained as the promotion incumbent",
+      "files": {
+        "rad": {
+          "source": "model/rad_mlp.pt",
+          "target": "model/rad_mlp.pt",
+          "sha256": "DEFD40ED57F3CB726E6CE902FA2225FF3432FA5CE5600018D9FD55D6B3510AD8",
+          "bytes": 572758
+        },
+        "learned_router": {
+          "source": "model/learned_router.json",
+          "target": "model/learned_router.json",
+          "sha256": "5B2B14E6212FFD98756815503D1FC31632DA01B38C681A701D445F550AD6D775",
+          "bytes": 7920
+        }
+      }
+    },
+    "rgd_fixed_policy": {
+      "updated": "2026-04-12 15:05",
+      "group": "rgd_fixed_policy",
+      "source_bundle": "",
+      "source_adaptive_state_root": "",
+      "metrics": {
+        "collision_rate": 0.1,
+        "success_rate": 0.425,
+        "avg_driving_distance": 362.79495150951277,
+        "avg_runtime_per_frame": 0.27085280708395515,
+        "slow_call_rate": 0.079375,
+        "deliberative_slow_call_rate": 0.079375,
+        "slow_call_success_rate": 0.6,
+        "budget_normalized_independent_high_risk_utility": 0.29289847883597886,
+        "independent_selective_routing_gain": 0.011906763579557712,
+        "collapse_missed_rate": 0.35952380952380947,
+        "slow_utility_failure_rate": 0.21142857142857144
+      },
+      "scope": {
+        "envs": [
+          "highway-v0",
+          "intersection-v0",
+          "merge-v0",
+          "roundabout-v0"
+        ],
+        "run_count": 40,
+        "env_count": 4
+      },
+      "compare_fields": [
+        "collision_rate",
+        "success_rate",
+        "budget_normalized_independent_high_risk_utility",
+        "avg_driving_distance",
+        "independent_selective_routing_gain",
+        "collapse_missed_rate",
+        "slow_utility_failure_rate",
+        "avg_runtime_per_frame"
+      ],
+      "reason": "no incumbent promoted checkpoint recorded for this group",
+      "files": {
+        "learned_router": {
+          "source": "model\\learned_router.json",
+          "target": "model\\learned_router.json",
+          "sha256": "5315D403E281A7B041B6D1D2C031F1A518798CD642B9F8C07F771B1599D47D15",
+          "bytes": 7920
+        }
+      }
+    }
+  }
+}

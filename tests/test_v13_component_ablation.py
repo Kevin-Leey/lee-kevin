@@ -10,6 +10,11 @@ from tools.analyze_v13_component_ablation import (
     normalize_fixed_horizon_branch,
     summarize,
 )
+from dilu.evaluation.factorial_replay import (
+    COMPONENT_ABLATION_ARMS,
+    ComponentAblationQueryPolicy,
+    QueryAdmissionContext,
+)
 
 
 def _branch(
@@ -122,3 +127,61 @@ def test_fixed_horizon_collision_penalty_remains_one():
     row["branch_trajectory_json"] = json.dumps(json.loads(row["branch_trajectory_json"])[:10])
     normalized = normalize_fixed_horizon_branch(row, horizon=20, gamma=0.99)
     assert math.isclose(normalized["utility"], normalized["normalized_return"] - 1.0)
+
+
+def _admission_context(**overrides):
+    gate = {
+        "domain_contract_pass": True,
+        "executor_available_pass": True,
+        "latency_prediction_pass": True,
+        "absolute_feasibility_pass": True,
+        "latency_survival_pass": True,
+        "maneuver_breadth_pass": True,
+        "corrective_headroom_pass": True,
+        "state_need_pass": True,
+        "serial_gate_pass": True,
+    }
+    gate.update(overrides)
+    return QueryAdmissionContext(
+        frame=12,
+        fast_action=1,
+        query_metadata={"recoverability_gate": gate},
+    )
+
+
+def _component_arm(name):
+    return next(arm for arm in COMPONENT_ABLATION_ARMS if arm.name == name)
+
+
+def test_component_ablation_removes_only_the_named_serial_predicate():
+    full = ComponentAblationQueryPolicy(_component_arm("full"))
+    without_n = ComponentAblationQueryPolicy(_component_arm("without_n"))
+    context = _admission_context(state_need_pass=False, serial_gate_pass=False)
+
+    assert full.decide(context).admit is False
+    decision = without_n.decide(context)
+    assert decision.admit is True
+    assert decision.audit["component_ablation_state_need_retained"] is False
+    assert decision.audit["component_ablation_non_ablatable_pass"] is True
+
+
+def test_component_ablation_keeps_base_feasibility_and_requires_complete_metadata():
+    without_n = ComponentAblationQueryPolicy(_component_arm("without_n"))
+    assert without_n.decide(
+        _admission_context(
+            state_need_pass=False,
+            serial_gate_pass=False,
+            absolute_feasibility_pass=False,
+        )
+    ).admit is False
+
+    incomplete = _admission_context().query_metadata["recoverability_gate"]
+    incomplete.pop("maneuver_breadth_pass")
+    with pytest.raises(ValueError, match="boolean gate fields"):
+        without_n.decide(
+            QueryAdmissionContext(
+                frame=12,
+                fast_action=1,
+                query_metadata={"recoverability_gate": incomplete},
+            )
+        )

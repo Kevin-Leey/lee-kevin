@@ -39,7 +39,6 @@ from dilu.driver_agent.reasoning.rgd_support import (
 )
 from dilu.driver_agent.reasoning.slow_thinker import SlowPathUnavailableError, SlowThinker
 from dilu.driver_agent.reasoning.support_memory import StateMemoryRetriever, resolve_memory_path
-from dilu.latency_contract import resolve_latency_contract
 from dilu.utils.junction_gap import assess_junction_gap
 from dilu.utils.shared import float_or_default
 
@@ -291,10 +290,19 @@ class RGDOrchestrator:
         selected_action = int(pre_guard_action)
         guard_cfg = dict(self.config.get("release_dominance_guard", {}) or {})
         guard_enabled = bool(guard_cfg.get("enable", False))
-        latency_contract = resolve_latency_contract(self.config)
-        effective_delay_steps = max(
-            0, int(latency_contract.get("scheduled_steps", 0) or 0)
+        # The runtime binds one latency contract after the simulator rate is
+        # known.  Prefer its scheduled frame count here so the release guard
+        # observes the same delay that the replay scheduler will execute.
+        latency_contract = dict(
+            self.config.get("_resolved_latency_contract", {}) or {}
         )
+        if latency_contract:
+            effective_delay_steps = max(
+                0, int(latency_contract.get("scheduled_steps", 0) or 0)
+            )
+        else:
+            replay_cfg = dict(self.config.get("closed_loop_latency_replay", {}) or {})
+            effective_delay_steps = max(0, int(replay_cfg.get("delay_steps", 0) or 0))
         guard_meta: Dict[str, Any] = {
             "release_dominance_guard_enabled": bool(guard_enabled),
             "release_dominance_guard_scheduled_delay_steps": int(
@@ -742,21 +750,21 @@ class RGDOrchestrator:
             self._build_core_junction_pre_screen(state),
         )
         runtime_budget_state = self.slow.get_runtime_budget_state()
-        latency_contract = resolve_latency_contract(self.config)
-        configured_latency = (
-            float(latency_contract["predicted_seconds"])
-            if bool(latency_contract.get("prediction_available", False))
-            else None
-        )
-        latency_source = str(
-            latency_contract.get("source", "missing_prediction")
-            or "missing_prediction"
-        )
-        predicted_delay_steps = (
-            int(latency_contract.get("predicted_steps", 0) or 0)
-            if bool(latency_contract.get("prediction_available", False))
-            else None
-        )
+        replay_cfg = dict(self.config.get("closed_loop_latency_replay", {}) or {})
+        configured_latency = None
+        latency_source = None
+        if "extra_latency_s" in replay_cfg:
+            configured_latency = max(0.0, float_or_default(replay_cfg.get("extra_latency_s"), 0.0))
+            latency_source = "closed_loop_latency_replay.extra_latency_s"
+        elif self.config.get("rgd_predicted_slow_latency_s") is not None:
+            configured_latency = max(0.0, float_or_default(self.config.get("rgd_predicted_slow_latency_s"), 0.0))
+            latency_source = str(
+                self.config.get(
+                    "rgd_predicted_slow_latency_source",
+                    "runtime_config.rgd_predicted_slow_latency_s",
+                )
+                or "runtime_config.rgd_predicted_slow_latency_s"
+            )
         latency_context = build_slow_path_latency_context(
             llm_available=runtime_budget_state["llm_available"],
             llm_invoke_timeout_s=runtime_budget_state["llm_invoke_timeout_s"],
@@ -765,10 +773,7 @@ class RGDOrchestrator:
             predicted_slow_latency_s=configured_latency,
             latency_source=latency_source,
             safety_reserve_seconds=self._resolve_env_float("rgd_latency_safety_reserve_s", 0.0),
-            policy_frequency=float_or_default(
-                latency_contract.get("policy_frequency_hz"), 10.0
-            ),
-            resolved_delay_steps=predicted_delay_steps,
+            policy_frequency=float_or_default(self.config.get("policy_frequency", 10.0), 10.0),
         )
         fused_route_score = self._compute_unified_route_score(
             lookahead_risk=None,
@@ -1050,28 +1055,6 @@ class RGDOrchestrator:
     def export_runtime_contract(self) -> Dict[str, Any]:
         """Return the canonical runtime contract used by this orchestrator."""
         return self._runtime_contract.to_dict()
-
-    def record_external_slow_request(self) -> None:
-        """Account for a replayed slow request without invoking the backend.
-
-        Factorial replay deliberately replaces the remote response after the
-        proposal-blind Fast/RGD state update.  Keeping attempt and cooldown
-        accounting in the orchestrator makes the replayed policy state identical
-        to an online request while leaving the backend call out of the loop.
-        """
-        if self._slow_call_budget is not None and self._slow_call_attempts >= self._slow_call_budget:
-            raise RuntimeError("slow-call budget exhausted during replay")
-        if self._slow_call_cooldown_remaining > 0:
-            raise RuntimeError("slow-call cooldown active during replay")
-        self._slow_call_attempts += 1
-        self._slow_call_cooldown_remaining = self._slow_call_cooldown_frames + 1
-        self.stats["slow_call_attempts"] = int(self._slow_call_attempts)
-        self.stats["slow_call_budget"] = self._slow_call_budget
-        self.stats["slow_call_budget_remaining"] = (
-            None
-            if self._slow_call_budget is None
-            else max(0, self._slow_call_budget - self._slow_call_attempts)
-        )
 
     def snapshot_policy_state(self) -> Dict[str, Any]:
         """Return the allowlisted temporal state that can alter later actions."""
@@ -1433,6 +1416,23 @@ class RGDOrchestrator:
         """Resolve and install the single effective per-frame action domain."""
         state.clear_effective_action_universe()
         base_actions = {int(action) for action in state.get_available_actions()}
+        scenario = str(getattr(state, "scenario_type", "") or "").split("-")[0].strip().lower()
+        if scenario == "highway":
+            base_actions = {
+                action
+                for action in base_actions
+                if (
+                    action not in {int(ActionType.LANE_LEFT), int(ActionType.LANE_RIGHT)}
+                    or (
+                        action == int(ActionType.LANE_LEFT)
+                        and bool(getattr(state, "can_change_left", False))
+                    )
+                    or (
+                        action == int(ActionType.LANE_RIGHT)
+                        and bool(getattr(state, "can_change_right", False))
+                    )
+                )
+            }
         controlled_actions = {
             int(action) for action in self._highway_fast_pass_available_actions(state)
         }
@@ -1639,6 +1639,26 @@ class RGDOrchestrator:
         scenario = str(getattr(state, "scenario_type", "") or "").split("-")[0].strip().lower()
         if scenario != "highway":
             return available
+
+        # A highway environment can expose both lateral action ids even when
+        # the corresponding manoeuvre is unavailable in this frame.  Keep
+        # such actions out of the base executor domain; the controlled-gap
+        # check below is the only path that reintroduces them.
+        available = {
+            action
+            for action in available
+            if (
+                action not in {int(ActionType.LANE_LEFT), int(ActionType.LANE_RIGHT)}
+                or (
+                    action == int(ActionType.LANE_LEFT)
+                    and bool(getattr(state, "can_change_left", False))
+                )
+                or (
+                    action == int(ActionType.LANE_RIGHT)
+                    and bool(getattr(state, "can_change_right", False))
+                )
+            )
+        }
         speed = max(0.0, float_or_default(getattr(state, "ego_speed", None), 0.0))
         if not (10.0 <= speed <= 23.0):
             return available

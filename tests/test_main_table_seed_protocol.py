@@ -296,7 +296,7 @@ class MainTableFreshSeedProtocolTests(unittest.TestCase):
             iter_selected_groups({"always_fast": {}}, ["always-fast"])
 
     def test_v12_main_preflight_accepts_only_the_frozen_six_arm_contract(self):
-        protocol = load_formal_protocol(Path("formal_protocol_v12.yaml"))
+        protocol = load_formal_protocol(Path("formal_protocol.yaml"))
         cfg = load_formal_base_config(protocol)
         cfg["SILICONFLOW_API_KEY"] = "test-only-key"
         groups = list(

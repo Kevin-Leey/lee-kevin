@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -97,14 +98,21 @@ def component_scores(
     need = float(components["need_score"])
     opportunity = float(latency * math.sqrt(max(0.0, alternatives * headroom)))
     priority = float(opportunity * need)
+    raw_feasibility_ok = bool(components.get("raw_feasibility_valid", False))
+    support_evidence_check_active = bool(spec.use_a)
+    support_evidence_ok = (
+        bool(components.get("support_cost_complete", False))
+        if support_evidence_check_active
+        else True
+    )
     hard_alternative_ok = (
         int(components["alternative_count"]) >= 1 if spec.use_a else True
     )
-    absolute_alternative_ok = int(
-        components.get("absolute_alternative_count", components["alternative_count"])
-    ) >= 1
+    absolute_alternative_ok = int(components["absolute_alternative_count"]) >= 1
     eligible = bool(
-        absolute_alternative_ok
+        raw_feasibility_ok
+        and support_evidence_ok
+        and absolute_alternative_ok
         and
         hard_alternative_ok
         and opportunity >= RGD_FLOOR
@@ -118,8 +126,130 @@ def component_scores(
         "ablated_priority": priority,
         "hard_alternative_check_active": bool(spec.use_a),
         "hard_alternative_ok": bool(hard_alternative_ok),
+        "raw_feasibility_ok": bool(raw_feasibility_ok),
+        "support_evidence_check_active": bool(support_evidence_check_active),
+        "support_evidence_ok": bool(support_evidence_ok),
         "absolute_alternative_ok": bool(absolute_alternative_ok),
         "eligible": eligible,
+    }
+
+
+def _validate_protocol_contract(
+    protocol_path: Path,
+    *,
+    seeds: Sequence[int],
+    delay_s: float,
+    horizon: int,
+    gamma: float,
+    epsilon: float,
+    bootstrap_draws: int,
+) -> Dict[str, Any]:
+    """Require the fixed component-ablation protocol before a replay starts."""
+    protocol = yaml.safe_load(protocol_path.read_text(encoding="utf-8-sig")) or {}
+    submission = dict(protocol.get("tvt_submission_contract", {}) or {})
+    component = dict(submission.get("component_ablation", {}) or {})
+    expected_range = {
+        "start": int(min(seeds)),
+        "end": int(max(seeds)),
+        "count": len(seeds),
+    }
+    required = {
+        "delay_s": float(delay_s),
+        "horizon_steps": int(horizon),
+        "gamma": float(gamma),
+        "corrective_margin": float(epsilon),
+        "opportunity_floor": RGD_FLOOR,
+        "priority_threshold": RGD_THRESHOLD,
+        "bootstrap_draws": int(bootstrap_draws),
+        "removed_component_value": 1.0,
+        "remove_support_hard_gate_when_A_removed": True,
+        "absolute_alternative_feasibility_non_ablatable": True,
+        "alternative_metric_source": "action_support_ranking_costs",
+        "headroom_metric_source": "action_recovery_costs",
+        "viable_cost_threshold": 0.55,
+    }
+    if str(submission.get("rgd_method_version", "")) != "support_breadth_v11":
+        raise ValueError("component ablation method version drift")
+    if component.get("seed_range") != expected_range:
+        raise ValueError("component ablation seed range drift")
+    for field, expected in required.items():
+        if component.get(field) != expected:
+            raise ValueError(f"component ablation contract drift: {field}")
+    runtime = dict(protocol.get("runtime_config", {}) or {})
+    if runtime.get("rgd_decision_threshold") != RGD_THRESHOLD:
+        raise ValueError("component ablation runtime threshold drift")
+    return component
+
+
+def _validate_source_manifest(
+    manifest: Mapping[str, Any],
+    *,
+    trace_root: Path,
+    protocol_path: Path,
+    seeds: Sequence[int],
+    delay_s: float,
+    horizon: int,
+    gamma: float,
+    epsilon: float,
+    bootstrap_draws: int,
+) -> None:
+    """Validate that release rollouts were produced by the locked source arm."""
+    expected = {
+        "trace_root": str(trace_root.resolve()),
+        "protocol": str(protocol_path.resolve()),
+        "seeds": [int(seed) for seed in seeds],
+        "seed_is_experimental_unit": True,
+        "method_version": "support_breadth_v11",
+        "alternative_metric_source": "action_support_ranking_costs",
+        "headroom_metric_source": "action_recovery_costs",
+        "absolute_alternative_feasibility_non_ablatable": True,
+        "viable_cost_threshold": 0.55,
+        "delays_s": [0.7, float(delay_s), 2.7],
+        "horizon_steps": int(horizon),
+        "gamma": float(gamma),
+        "epsilon": float(epsilon),
+        "policy_frequency_hz": 10,
+        "bootstrap_draws": int(bootstrap_draws),
+        "bootstrap_seed": BOOTSTRAP_SEED,
+    }
+    for field, value in expected.items():
+        if manifest.get(field) != value:
+            raise ValueError(f"component ablation source manifest drift: {field}")
+
+
+def _paper_acceptance(
+    summary: Sequence[Mapping[str, Any]],
+    *,
+    legal_action_provenance: str,
+) -> Dict[str, Any]:
+    """State the manuscript gate only when full RGD is strictly superior."""
+    rates = {
+        str(row.get("arm", "")): float(row.get("corrective_set_fraction"))
+        for row in summary
+    }
+    full = rates.get("RGD")
+    comparators = []
+    for label in ("RGD w/o L", "RGD w/o A", "RGD w/o H"):
+        if full is None or label not in rates:
+            raise ValueError(f"missing component-ablation arm: {label}")
+        margin = float(full - rates[label])
+        comparators.append(
+            {
+                "arm": label,
+                "full_rgd_fraction": float(full),
+                "comparator_fraction": float(rates[label]),
+                "margin_fraction": margin,
+                "strictly_superior": bool(margin > 0.0),
+            }
+        )
+    metric_passed = bool(all(item["strictly_superior"] for item in comparators))
+    exact_actions = str(legal_action_provenance) == "exact"
+    return {
+        "metric_passed": metric_passed,
+        "legal_action_provenance": str(legal_action_provenance),
+        "exact_action_provenance": exact_actions,
+        "comparators": comparators,
+        "passed": bool(metric_passed and exact_actions),
     }
 
 

@@ -55,9 +55,9 @@ from tools.analyze_query_release_factorial import (  # noqa: E402
 )
 
 
-DISCREPANCY_BASELINE_VERSION = "rgd_discrepancy_query_baseline_v2"
-DISCREPANCY_RUN_SCHEMA = "rgd_discrepancy_query_baseline_run_v2"
-ANALYSIS_SCHEMA = "rgd_discrepancy_query_baseline_analysis_v2"
+DISCREPANCY_BASELINE_VERSION = "rgd_discrepancy_query_baseline_v1"
+DISCREPANCY_RUN_SCHEMA = "rgd_discrepancy_query_baseline_run_v1"
+ANALYSIS_SCHEMA = "rgd_discrepancy_query_baseline_analysis_v1"
 
 BASELINE_ARM_FLAGS: Mapping[str, Mapping[str, bool]] = {
     "discrepancy_only": {

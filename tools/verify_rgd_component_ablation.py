@@ -15,7 +15,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from tools.analyze_common_trajectory_allocators import RGD_FLOOR, RGD_THRESHOLD
-from tools.analyze_rgd_component_ablation import ARM_SPECS, _branch_outcome
+from tools.analyze_rgd_component_ablation import (
+    ARM_SPECS,
+    _branch_outcome,
+    _paper_acceptance,
+)
 
 
 def read_csv(path: Path) -> List[Dict[str, Any]]:
@@ -31,6 +35,37 @@ def require(condition: bool, message: str) -> None:
 def close(left: Any, right: Any, message: str, tol: float = 1e-12) -> None:
     if not math.isclose(float(left), float(right), rel_tol=0.0, abs_tol=tol):
         raise AssertionError(f"{message}: {left!r} != {right!r}")
+
+
+def close_optional(left: Any, right: Any, message: str, tol: float = 1e-12) -> None:
+    """Compare optional numeric exports without treating a blank as zero."""
+    left_missing = left in (None, "")
+    right_missing = right in (None, "")
+    if left_missing or right_missing:
+        if left_missing and right_missing:
+            return
+        raise AssertionError(f"optional value mismatch for {message}")
+    close(left, right, message, tol=tol)
+
+
+def verify_paper_acceptance(
+    exported: Dict[str, Any],
+    summary: Sequence[Dict[str, Any]],
+    legal_action_provenance: str,
+) -> None:
+    """Recompute the publication flag rather than trusting an exported bit."""
+    expected = _paper_acceptance(
+        summary,
+        legal_action_provenance=legal_action_provenance,
+    )
+    require(
+        bool(exported.get("passed")) == bool(expected["passed"]),
+        "paper-acceptance flag drift",
+    )
+    require(
+        bool(exported.get("metric_passed")) == bool(expected["metric_passed"]),
+        "paper-acceptance metric drift",
+    )
 
 
 def event_key(row: Dict[str, Any]) -> Tuple[int, int]:

@@ -138,6 +138,14 @@ def _branch(*, effective_action, target_speed, utility):
         "progress_m": utility * 10.0,
         "collision": 0,
         "min_ttc": 3.0,
+        "mean_abs_jerk_mps3": 0.2,
+        "steps_completed": 20,
+        "terminal_cause": "horizon",
+        "completed_horizon": True,
+        "branch_trajectory_json": json.dumps(
+            [{"frame": 10, "effective_action": effective_action}],
+            separators=(",", ":"),
+        ),
     }
 
 

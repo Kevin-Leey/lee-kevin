@@ -1,4 +1,4 @@
-"""Generate the zero-delay and response-delay extension figures."""
+"""Generate the zero-delay policy and response-delay figure."""
 
 from __future__ import annotations
 
@@ -15,9 +15,6 @@ from tvt_figure_utils import OKABE_ITO, apply_tvt_style, save_figure_triplet
 
 ROOT = Path(__file__).resolve().parents[1]
 MAIN_ANALYSIS = ROOT / "results" / "tvt_zero_delay_20260728" / "main_analysis"
-COMPONENT_ANALYSIS = (
-    ROOT / "results" / "tvt_zero_delay_20260728" / "component_analysis"
-)
 LATENCY_ANALYSIS = ROOT / "results" / "tvt_zero_delay_20260728" / "latency_analysis"
 DEFAULT_OUTPUT = ROOT / "paper" / "figures"
 
@@ -73,13 +70,11 @@ def clean_axis(axis: plt.Axes, *, grid_axis: str = "x") -> None:
 
 def generate_policy_and_latency_figure(
     summary_rows: list[dict[str, str]],
-    paired_rows: list[dict[str, str]],
     lifecycle_rows: list[dict[str, str]],
     latency_rows: list[dict[str, str]],
     output_dir: Path,
 ) -> list[Path]:
     summary = {(row["label"], row["metric"]): row for row in summary_rows}
-    paired = {(row["label"], row["metric"]): row for row in paired_rows}
     latency = {
         (float(row["latency_s"]), row["metric"]): row for row in latency_rows
     }
@@ -120,13 +115,6 @@ def generate_policy_and_latency_figure(
         if float(summary[(method, "collision_rate")]["mean"]) != 0.0:
             raise RuntimeError(f"Unexpected collision for {method}")
 
-    distance_rows = []
-    for method in BASELINES:
-        row = paired.get((method, "avg_driving_distance"))
-        if row is None or int(row["n_pairs"]) != 30:
-            raise RuntimeError(f"Missing paired-distance contrast for {method}")
-        distance_rows.append(row)
-
     delays = [0.0, 0.7, 1.7, 2.7]
     delay_metrics = [
         "success_rate",
@@ -160,51 +148,16 @@ def generate_policy_and_latency_figure(
     if not np.array_equal(delay_requests, np.array([161, 162, 143, 109])):
         raise RuntimeError(f"Unexpected delay-sweep request counts: {delay_requests}")
 
-    figure = plt.figure(figsize=(7.16, 4.90))
-    grid = figure.add_gridspec(2, 2, width_ratios=[1.12, 1.0])
-
-    forest_axis = figure.add_subplot(grid[0, 0])
-    forest_y = np.arange(len(distance_rows), dtype=float)
-    effects = np.array([float(row["mean_paired_difference"]) for row in distance_rows])
-    lows = np.array([float(row["ci_low"]) for row in distance_rows])
-    highs = np.array([float(row["ci_high"]) for row in distance_rows])
-    forest_axis.axvline(0.0, color="#555555", linewidth=0.75, zorder=1)
-    forest_axis.hlines(
-        forest_y, lows, highs, color=METHOD_COLORS["RGD"], linewidth=1.10, zorder=2
+    figure, axes = plt.subplots(
+        1,
+        3,
+        figsize=(7.16, 2.55),
+        gridspec_kw={"width_ratios": [1.0, 1.0, 1.0], "wspace": 0.50},
     )
-    forest_axis.scatter(
-        effects,
-        forest_y,
-        s=26,
-        color=METHOD_COLORS["RGD"],
-        edgecolor="#173A5E",
-        linewidth=0.55,
-        zorder=3,
-    )
-    for effect, high, yy in zip(effects, highs, forest_y):
-        forest_axis.text(
-            min(high + 0.34, 14.85),
-            yy,
-            f"{effect:+.1f}",
-            ha="left",
-            va="center",
-            fontsize=6.3,
-            color="#333333",
-        )
-    forest_axis.set_yticks(
-        forest_y,
-        [DISPLAY_LABELS.get(row["label"], row["label"]) for row in distance_rows],
-    )
-    forest_axis.invert_yaxis()
-    forest_axis.set_xlim(-4.4, 15.7)
-    forest_axis.set_xticks([-4, 0, 4, 8, 12])
-    forest_axis.set_xlabel("RGD vs. comparator distance (m)")
-    forest_axis.tick_params(axis="y", labelsize=6.4)
-    clean_axis(forest_axis)
 
     colors = [METHOD_COLORS[method] for method in METHODS]
     method_y = np.arange(len(METHODS), dtype=float)
-    query_axis = figure.add_subplot(grid[0, 1])
+    query_axis = axes[0]
     query_values = [queries[method] for method in METHODS]
     query_bars = query_axis.barh(
         method_y,
@@ -227,9 +180,10 @@ def generate_policy_and_latency_figure(
     query_axis.set_xlim(0, 205)
     query_axis.set_xticks([0, 50, 100, 150, 200])
     query_axis.set_xlabel("Slow-path requests")
+    query_axis.tick_params(axis="y", labelsize=6.1)
     clean_axis(query_axis)
 
-    runtime_axis = figure.add_subplot(grid[1, 0])
+    runtime_axis = axes[1]
     runtime_means = 1000.0 * np.array(
         [float(summary[(method, "avg_runtime_per_frame")]["mean"]) for method in METHODS]
     )
@@ -268,9 +222,10 @@ def generate_policy_and_latency_figure(
     runtime_axis.set_xlim(0, 41)
     runtime_axis.set_xticks([0, 10, 20, 30, 40])
     runtime_axis.set_xlabel("Runtime (ms/frame)")
+    runtime_axis.tick_params(axis="y", labelsize=6.1)
     clean_axis(runtime_axis)
 
-    delay_axis = figure.add_subplot(grid[1, 1])
+    delay_axis = axes[2]
     delay_means = np.array(
         [float(latency[(delay, "avg_driving_distance")]["mean"]) for delay in delays]
     )
@@ -313,26 +268,29 @@ def generate_policy_and_latency_figure(
     delay_axis.set_ylabel("Mean distance (m)")
     clean_axis(delay_axis, grid_axis="y")
 
-    figure.subplots_adjust(
-        left=0.135,
-        right=0.992,
-        bottom=0.10,
-        top=0.95,
-        wspace=0.50,
-        hspace=0.68,
-    )
-    for axis, title in zip(
-        (forest_axis, query_axis, runtime_axis, delay_axis),
+    figure.subplots_adjust(left=0.105, right=0.992, bottom=0.28, top=0.96)
+    for axis, panel_label in zip(
+        (query_axis, runtime_axis, delay_axis),
         (
-            "(a) Paired distance effect",
-            "(b) Slow-path requests",
-            "(c) Runtime",
-            "(d) RGD delay sweep",
+            "(a) Slow-path requests",
+            "(b) Runtime",
+            "(c) Delay sweep",
         ),
     ):
-        axis.set_title(title, loc="left", pad=3.5, fontsize=7.2, fontweight="bold")
+        axis.text(
+            0.5,
+            -0.34,
+            panel_label,
+            transform=axis.transAxes,
+            ha="center",
+            va="top",
+            fontsize=7.2,
+            fontweight="bold",
+        )
     paths, _ = save_figure_triplet(
-        figure, output_dir / "fig_zero_delay_latency_extension"
+        figure,
+        output_dir / "fig_zero_delay_latency_extension",
+        crop=False,
     )
     return paths
 
@@ -547,40 +505,18 @@ def main() -> int:
         "--main-summary", type=Path, default=MAIN_ANALYSIS / "main_arm_summary.csv"
     )
     parser.add_argument(
-        "--paired", type=Path, default=MAIN_ANALYSIS / "paired_differences.csv"
-    )
-    parser.add_argument(
         "--lifecycle", type=Path, default=MAIN_ANALYSIS / "lifecycle_summary.csv"
     )
     parser.add_argument(
         "--latency-summary", type=Path, default=LATENCY_ANALYSIS / "latency_summary.csv"
-    )
-    parser.add_argument(
-        "--ablation",
-        type=Path,
-        default=COMPONENT_ANALYSIS / "component_ablation_summary.csv",
-    )
-    parser.add_argument(
-        "--ablation-by-seed",
-        type=Path,
-        default=COMPONENT_ANALYSIS / "component_ablation_by_seed.csv",
-    )
-    parser.add_argument(
-        "--component-verification",
-        type=Path,
-        default=COMPONENT_ANALYSIS / "v13_component_ablation_verification.json",
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
 
     inputs = [
         args.main_summary,
-        args.paired,
         args.lifecycle,
         args.latency_summary,
-        args.ablation,
-        args.ablation_by_seed,
-        args.component_verification,
     ]
     for path in inputs:
         if not path.is_file():
@@ -590,18 +526,9 @@ def main() -> int:
 
     outputs = generate_policy_and_latency_figure(
         read_rows(args.main_summary),
-        read_rows(args.paired),
         read_rows(args.lifecycle),
         read_rows(args.latency_summary),
         args.output_dir,
-    )
-    outputs.extend(
-        generate_component_figure(
-            read_rows(args.ablation),
-            read_rows(args.ablation_by_seed),
-            read_json(args.component_verification),
-            args.output_dir,
-        )
     )
     print(json.dumps({"outputs": [str(path) for path in outputs]}, indent=2))
     return 0

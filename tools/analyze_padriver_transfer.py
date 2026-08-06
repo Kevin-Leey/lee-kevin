@@ -67,6 +67,15 @@ TRANSFER_CELLS = tuple(
     for density in (2.0, 3.0)
 )
 
+# The transfer protocol fixes three policies, six lane-density cells, and one
+# matched episode for each of thirty seeds.
+EXPECTED_TRANSFER_KEYS = frozenset(
+    (group, int(lanes), float(density), int(seed))
+    for group in GROUP_LABELS
+    for lanes, density in TRANSFER_CELLS
+    for seed in range(30)
+)
+
 PADRIVER_ROWS = [
     {
         "evaluation": "PADriver (normal)",
@@ -109,6 +118,35 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def audit_source_rows(rows: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    """Validate the complete fixed transfer factorial before aggregation."""
+    source_rows = [dict(row) for row in rows]
+    keys = {
+        (
+            str(row.get("group", "")),
+            int(row.get("transfer_lanes_count")),
+            float(row.get("transfer_vehicles_density")),
+            int(row.get("seed_idx")),
+        )
+        for row in source_rows
+    }
+    hashes = {str(row.get("source_hash", "")).strip() for row in source_rows}
+    if len(hashes) != 1 or not next(iter(hashes), ""):
+        raise RuntimeError("cannot mix executable source hashes in transfer inputs")
+    if keys != EXPECTED_TRANSFER_KEYS:
+        raise RuntimeError(
+            "expected the complete 540-run factorial: "
+            f"observed {len(keys)} unique transfer keys"
+        )
+    return {
+        "source_rows": len(source_rows),
+        "observed_unique_keys": len(keys),
+        "overlapping_rows": len(source_rows) - len(keys),
+        "source_hash": next(iter(hashes)),
+        "source_hash_row_count": len(source_rows),
+    }
 
 
 def load_physical_frames(result_dir: Path) -> List[Dict[str, Any]]:

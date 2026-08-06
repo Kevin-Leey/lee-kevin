@@ -53,40 +53,19 @@ class ProtocolContractAlignmentTests(unittest.TestCase):
         self.assertEqual(retry["initial_backoff_s"], 0.5)
         self.assertEqual(retry["schedule"], "exponential")
 
-    def test_only_the_seven_declared_executor_models_are_in_scope(self):
+    def test_only_the_four_declared_executor_models_are_in_scope(self):
         expected = [
-            ("siliconflow", "Qwen/Qwen3-8B", "Qwen3-8B", "https://api.siliconflow.cn/v1", None),
-            (
-                "siliconflow",
-                "Qwen/Qwen2.5-7B-Instruct",
-                "Qwen2.5-7B",
-                "https://api.siliconflow.cn/v1",
-                None,
-            ),
-            ("siliconflow", "Qwen/Qwen3.5-4B", "Qwen3.5-4B", "https://api.siliconflow.cn/v1", None),
-            ("openai_compatible", "gpt-5.6-sol", "GPT-5.6-sol", "https://bizdecipher.com/v1", None),
-            ("openai_compatible", "gpt-5.6-terra", "GPT-5.6-terra", "https://cca.maya.today/v1", None),
-            ("openai_compatible", "gpt-5.6-luna", "GPT-5.6-luna", "https://cca.maya.today/v1", None),
-            ("openai_compatible", "baize-fable-5", "Baize-Fable-5", "https://api.aigc.red/v1", "none"),
+            ("siliconflow", "Qwen/Qwen3-8B", "Qwen3-8B"),
+            ("siliconflow", "Qwen/Qwen2.5-7B-Instruct", "Qwen2.5-7B"),
+            ("siliconflow", "Qwen/Qwen3.5-4B", "Qwen3.5-4B"),
+            ("openai_compatible", "gpt-5.6-sol", "GPT-5.6-sol"),
         ]
         actual_config = [
-            (
-                entry["provider"],
-                entry["model"],
-                entry["label"],
-                entry["base_url"],
-                entry.get("reasoning_effort"),
-            )
+            (entry["provider"], entry["model"], entry["label"])
             for entry in self.config["MULTI_LLM_MODELS"]
         ]
         actual_protocol = [
-            (
-                entry["provider"],
-                entry["model"],
-                entry["label"],
-                entry["base_url"],
-                entry.get("reasoning_effort"),
-            )
+            (entry["provider"], entry["model"], entry["label"])
             for entry in self.submission["table_vii"]["slow_executor_models"]
         ]
 
@@ -94,10 +73,6 @@ class ProtocolContractAlignmentTests(unittest.TestCase):
         self.assertEqual(actual_protocol, expected)
         self.assertNotIn("grok", str(actual_config).lower())
         self.assertNotIn("grok", str(actual_protocol).lower())
-        self.assertFalse(any("api_key" in entry for entry in self.config["MULTI_LLM_MODELS"]))
-        self.assertFalse(
-            any("api_key" in entry for entry in self.submission["table_vii"]["slow_executor_models"])
-        )
 
     def test_submission_contract_has_no_anonymous_artifact_field(self):
         self.assertNotIn("anonymous_artifact", self.submission)

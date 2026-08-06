@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import os
+import time
 from typing import Any, Dict, Optional
 
 import requests
+
+
+RETRYABLE_HTTP_STATUSES = (408, 409, 425, 429, 500, 502, 503, 504)
 
 
 class QwenChatModel:
@@ -24,6 +28,8 @@ class QwenChatModel:
         self.temperature = float(temperature)
         self.max_tokens = int(max_tokens)
         self.request_timeout_s = max(0.1, float(os.environ["QWEN_REQUEST_TIMEOUT_S"]))
+        self.max_attempts = max(1, int(os.environ.get("LLM_MAX_ATTEMPTS", "3") or 3))
+        self.retry_backoff_s = max(0.0, float(os.environ.get("LLM_RETRY_BACKOFF_S", "0.5") or 0.5))
         self.provider = str(os.environ.get("LLM_PROVIDER", "siliconflow") or "siliconflow").strip().lower()
         self.base_url, self.api_key = self._resolve_endpoint(self.provider)
         if not self.api_key:
@@ -36,6 +42,8 @@ class QwenChatModel:
             self.force_json_response = self.provider in {"siliconflow", "tokenplan"}
         else:
             self.force_json_response = bool(force_json)
+        strict_json = self._optional_bool(os.environ.get("LLM_STRICT_JSON_SCHEMA", ""))
+        self.strict_json_schema = bool(strict_json) if strict_json is not None else False
 
     @staticmethod
     def _resolve_endpoint(provider: str) -> tuple:
@@ -100,38 +108,12 @@ class QwenChatModel:
         return proxies
 
     def complete(self, system_prompt: str, user_prompt: str) -> str:
-        payload: Dict[str, Any] = {
-            "model": self.model_name,
-            "messages": [
-                {"role": "system", "content": str(system_prompt)},
-                {"role": "user", "content": str(user_prompt)},
-            ],
-            "temperature": float(self.temperature),
-            "stream": False,
-        }
-        if self.force_json_response:
-            payload["response_format"] = {"type": "json_object"}
-
-        # tokenplan-style max_completion_tokens; OpenAI-compatible and SiliconFlow use max_tokens.
-        if self.provider == "tokenplan":
-            payload["max_completion_tokens"] = int(self.max_tokens)
-        else:
-            payload["max_tokens"] = int(self.max_tokens)
-
-        if self.enable_thinking is not None:
-            payload["enable_thinking"] = bool(self.enable_thinking)
-        if self.thinking_budget is not None:
-            payload["thinking_budget"] = int(self.thinking_budget)
+        payload = self._build_payload(system_prompt, user_prompt)
 
         with requests.Session() as session:
             session.trust_env = False
             session.proxies.update(self._resolve_proxies())
-            response = session.post(
-                f"{self.base_url}/chat/completions",
-                headers=self._headers(),
-                json=payload,
-                timeout=self.request_timeout_s,
-            )
+            response = self._post_with_retry(session, payload)
 
         if int(response.status_code) >= 400:
             raise RuntimeError(f"{self.provider} HTTP {response.status_code}: {str(response.text or '')[:300]}")
@@ -147,6 +129,84 @@ class QwenChatModel:
         if not content.strip():
             raise RuntimeError(f"{self.provider} response content is empty")
         return content
+
+    def _build_payload(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {
+            "model": self.model_name,
+            "messages": [
+                {"role": "system", "content": str(system_prompt)},
+                {"role": "user", "content": str(user_prompt)},
+            ],
+            "temperature": float(self.temperature),
+            "stream": False,
+        }
+        if self.force_json_response:
+            if self.strict_json_schema:
+                payload["response_format"] = {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "driving_decision",
+                        "strict": True,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "final_action": {"type": "integer", "minimum": 0, "maximum": 4},
+                                "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                "reason_lines": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                    "minItems": 1,
+                                    "maxItems": 3,
+                                },
+                            },
+                            "required": ["final_action", "confidence", "reason_lines"],
+                            "additionalProperties": False,
+                        },
+                    },
+                }
+            else:
+                payload["response_format"] = {"type": "json_object"}
+
+        # tokenplan-style max_completion_tokens; OpenAI-compatible and SiliconFlow use max_tokens.
+        if self.provider == "tokenplan":
+            payload["max_completion_tokens"] = int(self.max_tokens)
+        else:
+            payload["max_tokens"] = int(self.max_tokens)
+
+        supports_qwen_thinking = self.provider in {"siliconflow", "tokenplan"} and "qwen" in self.model_name.lower()
+        if supports_qwen_thinking and self.enable_thinking is not None:
+            payload["enable_thinking"] = bool(self.enable_thinking)
+        if (
+            supports_qwen_thinking
+            and self.thinking_budget is not None
+            and self.enable_thinking is not False
+        ):
+            payload["thinking_budget"] = int(self.thinking_budget)
+        return payload
+
+    def _post_with_retry(self, session: requests.Session, payload: Dict[str, Any]):
+        retryable_statuses = set(RETRYABLE_HTTP_STATUSES)
+        last_error: Optional[Exception] = None
+        for attempt in range(self.max_attempts):
+            try:
+                response = session.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=self._headers(),
+                    json=payload,
+                    timeout=self.request_timeout_s,
+                )
+            except (requests.Timeout, requests.ConnectionError) as exc:
+                last_error = exc
+                if attempt + 1 >= self.max_attempts:
+                    raise RuntimeError(
+                        f"{self.provider} request failed after {self.max_attempts} attempts: {exc}"
+                    ) from exc
+            else:
+                if int(response.status_code) not in retryable_statuses or attempt + 1 >= self.max_attempts:
+                    return response
+            if self.retry_backoff_s > 0.0:
+                time.sleep(self.retry_backoff_s * (2**attempt))
+        raise RuntimeError(f"{self.provider} request failed: {last_error}")
 
     def _headers(self) -> Dict[str, str]:
         headers = {"Content-Type": "application/json"}

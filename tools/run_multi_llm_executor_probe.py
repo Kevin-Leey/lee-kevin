@@ -14,6 +14,8 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 import yaml
 
+from dilu.driver_agent.qwen_adapter import RETRYABLE_HTTP_STATUSES
+
 
 METRICS = [
     "collision_rate",
@@ -30,6 +32,22 @@ METRICS = [
     "safety_override_rate",
     "independent_selective_routing_gain",
 ]
+
+
+def _resolved_retry_contract(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the retry settings that are persisted in a runtime manifest."""
+    max_attempts = max(1, int((cfg or {}).get("LLM_MAX_ATTEMPTS", 3) or 3))
+    initial_backoff = max(
+        0.0, float((cfg or {}).get("LLM_RETRY_BACKOFF_S", 0.5) or 0.5)
+    )
+    return {
+        "max_attempts": max_attempts,
+        "max_attempts_including_initial_request": max_attempts,
+        "initial_backoff_s": initial_backoff,
+        "schedule": "exponential",
+        "retryable_http_statuses": list(RETRYABLE_HTTP_STATUSES),
+        "retryable_transport_failures": ["requests.Timeout", "requests.ConnectionError"],
+    }
 
 
 def _safe_slug(text: str) -> str:
@@ -91,7 +109,14 @@ def _load_model_specs(config_path: Path, models_cli: Optional[Sequence[str]]) ->
     return specs
 
 
-def _write_model_protocol(base_protocol: Path, output_path: Path, spec: Dict[str, Any], base_cfg: Dict[str, Any]) -> None:
+def _write_model_protocol(
+    base_protocol: Path,
+    output_path: Path,
+    spec: Dict[str, Any],
+    base_cfg: Dict[str, Any],
+    *,
+    min_observation_frames: int = 1,
+) -> None:
     protocol = yaml.safe_load(base_protocol.read_text(encoding="utf-8-sig"))
     if not isinstance(protocol, dict):
         raise ValueError(f"protocol must be a YAML mapping: {base_protocol}")
@@ -101,27 +126,37 @@ def _write_model_protocol(base_protocol: Path, output_path: Path, spec: Dict[str
 
     provider = str(spec.get("provider", "siliconflow") or "siliconflow").strip().lower()
     model = str(spec.get("model", "")).strip()
-    api_key = str(spec.get("api_key", "") or "").strip()
     base_url = str(spec.get("base_url", "") or "").strip().rstrip("/")
+    retry_contract = _resolved_retry_contract(base_cfg)
 
     for target in (overrides, runtime_config):
         target["LLM_PROVIDER"] = provider
         target["QWEN_TEMPERATURE"] = 0.0
         target["QWEN_REQUEST_TIMEOUT_S"] = float(base_cfg.get("QWEN_REQUEST_TIMEOUT_S", 60.0) or 60.0)
+        target["rgd_min_observation_frames"] = max(1, int(min_observation_frames))
+        target["LLM_MAX_ATTEMPTS"] = int(retry_contract["max_attempts"])
+        target["LLM_RETRY_BACKOFF_S"] = float(retry_contract["initial_backoff_s"])
         if provider in {"openai_compatible", "openai", "bizdecipher"}:
             target["OPENAI_CHAT_MODEL"] = model
             target["BIZDECIPHER_CHAT_MODEL"] = model
-            target["OPENAI_API_KEY"] = api_key or str(base_cfg.get("OPENAI_API_KEY", "") or "")
-            target["BIZDECIPHER_API_KEY"] = target["OPENAI_API_KEY"]
             target["OPENAI_BASE_URL"] = base_url or str(base_cfg.get("OPENAI_BASE_URL", "") or "https://bizdecipher.com/v1")
             target["BIZDECIPHER_BASE_URL"] = target["OPENAI_BASE_URL"]
             # Some third-party models reject forced json_object.
             target["LLM_FORCE_JSON_RESPONSE"] = False
         else:
             target["SILICONFLOW_CHAT_MODEL"] = model
-            target["SILICONFLOW_API_KEY"] = str(base_cfg.get("SILICONFLOW_API_KEY", "") or "")
             target["SILICONFLOW_BASE_URL"] = str(base_cfg.get("SILICONFLOW_BASE_URL", "") or "https://api.siliconflow.cn/v1")
             target["LLM_FORCE_JSON_RESPONSE"] = True
+
+        for credential_key in (
+            "OPENAI_API_KEY",
+            "BIZDECIPHER_API_KEY",
+            "SILICONFLOW_API_KEY",
+            "TOKENPLAN_API_KEY",
+        ):
+            target.pop(credential_key, None)
+        target.pop("QWEN_ENABLE_THINKING", None)
+        target.pop("QWEN_THINKING_BUDGET", None)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(yaml.safe_dump(protocol, sort_keys=False, allow_unicode=True), encoding="utf-8")
@@ -175,8 +210,71 @@ def _run_model(
     return result_root / mode / stamp / "rgd_fixed_policy" / "rgd_fixed_policy_run_rows.csv"
 
 
-def _summarise_model(spec: Dict[str, Any], rows_path: Path) -> Dict[str, Any]:
+def _summarise_model(
+    spec: Dict[str, Any],
+    rows_path: Path,
+    *,
+    expected_envs: Optional[Sequence[str]] = None,
+    expected_seeds: Optional[Sequence[int]] = None,
+    retry_contract: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     rows = _read_csv(rows_path)
+    observed_pairs = {
+        (str(row.get("env", "")), int(row.get("seed_idx", -1))) for row in rows
+    }
+    if expected_envs is not None and expected_seeds is not None:
+        expected_pairs = {
+            (str(env), int(seed)) for env in expected_envs for seed in expected_seeds
+        }
+        if observed_pairs != expected_pairs:
+            raise ValueError("incomplete model matrix")
+
+    expected_retry = dict(retry_contract or _resolved_retry_contract({}))
+    records: List[Dict[str, Any]] = []
+    for row in rows:
+        result_dir = Path(str(row.get("result_dir", "") or ""))
+        manifest_path = result_dir / "runtime_manifest.json"
+        if not manifest_path.is_file():
+            raise ValueError(f"missing runtime manifest: {manifest_path}")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+        backend = dict(manifest.get("llm_backend", {}) or {})
+        if (
+            str(backend.get("provider", "")) != str(spec.get("provider", ""))
+            or str(backend.get("requested_model", "")) != str(spec.get("model", ""))
+        ):
+            raise ValueError("LLM manifest drift")
+        observed_retry = dict(backend.get("retry_contract", {}) or {})
+        retry_fields = [
+            "retryable_http_statuses",
+            "retryable_transport_failures",
+            "max_attempts",
+            "max_attempts_including_initial_request",
+            "initial_backoff_s",
+            "schedule",
+        ]
+        for field in retry_fields:
+            value = expected_retry[field]
+            if observed_retry.get(field) != value:
+                raise ValueError(f"retry contract drift: {field}")
+        for trace_path in sorted(result_dir.glob("ep_*/*_reasoning_records.json")):
+            payload = json.loads(trace_path.read_text(encoding="utf-8-sig"))
+            records.extend(list(payload.get("analysis_records", payload.get("records", [])) or []))
+
+    slow_attempts = [
+        record
+        for record in records
+        if str(record.get("system_used", "")) in {"slow", "fast_after_slow_failure"}
+    ]
+    successes = [record for record in slow_attempts if bool(record.get("slow_reasoning_success", False))]
+    failures = [record for record in slow_attempts if not bool(record.get("slow_reasoning_success", False))]
+    parse_failures = [
+        record
+        for record in failures
+        if str(record.get("slow_reasoning_failure_reason", "")).startswith("structured_parse_failed")
+    ]
+    fallbacks = [
+        record for record in slow_attempts if str(record.get("system_used", "")) == "fast_after_slow_failure"
+    ]
     result: Dict[str, Any] = {
         "label": str(spec.get("label") or spec.get("model")),
         "provider": str(spec.get("provider", "")),
@@ -185,9 +283,21 @@ def _summarise_model(spec: Dict[str, Any], rows_path: Path) -> Dict[str, Any]:
         "env_count": len({str(row.get("env", "")) for row in rows}),
         "seed_count": len({str(row.get("seed_idx", "")) for row in rows}),
         "rows_path": str(rows_path),
+        "slow_attempts": len(slow_attempts),
+        "slow_successes": len(successes),
+        "slow_failures": len(failures),
+        "slow_parse_failures": len(parse_failures),
+        "slow_fallbacks": len(fallbacks),
+        "slow_call_success_rate": (
+            float(len(successes) / len(slow_attempts)) if slow_attempts else 0.0
+        ),
+        "slow_call_rate": (
+            float(len(slow_attempts) / len(records)) if records else 0.0
+        ),
     }
     for metric in METRICS:
-        result[metric] = _mean(rows, metric)
+        if metric not in {"slow_call_success_rate", "slow_call_rate"}:
+            result[metric] = _mean(rows, metric)
     return result
 
 

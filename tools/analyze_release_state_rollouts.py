@@ -22,7 +22,6 @@ import math
 import os
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -33,6 +32,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from dilu.driver_agent.reasoning.fast_thinker import FastThinker
+from dilu.driver_agent.driverAgentV2 import DriverAgentV2 as OfflineDriverAgent
+from dilu.evaluation.release_snapshot import (
+    ReleaseSnapshot,
+    capture_release_snapshot,
+    validate_release_snapshot_policy_state,
+)
 from dilu.runtime_episode_setup import create_episode_env
 from dilu.runtime_frame_trace import create_episode_runtime_state
 from dilu.runtime_support import execute_episode_step
@@ -44,6 +49,7 @@ from tools.analyze_common_trajectory_allocators import (
     RGD_FLOOR,
     RGD_THRESHOLD,
     TTC_CUTOFF,
+    gate_component_values,
     gate_values,
     scheduled_frames,
     ttc_score,
@@ -53,6 +59,7 @@ from tools.run_main_table_runtime import (
     load_formal_base_config,
     load_formal_protocol,
 )
+from tools.v12_floor_overlay import VerifiedFloorOverlay, apply_floor_overlay
 
 
 RAW_ACTIONS = tuple(range(5))
@@ -61,14 +68,9 @@ BOOTSTRAP_DRAWS = 20_000
 BOOTSTRAP_SEED = 20260717
 
 
-@dataclass
-class ReleaseSnapshot:
-    frame: int
-    env: Any
-    obs: Any
-    fast_state: Dict[str, Any]
-    history: collections.deque
-    previous_action: int
+def _query_gate_components(record: Dict[str, Any], delay_s: float) -> Dict[str, Any]:
+    """Expose the canonical offline gate components for sibling analyses."""
+    return gate_component_values(record, delay_s)
 
 
 class FastBranchAgent:
@@ -78,18 +80,29 @@ class FastBranchAgent:
         self,
         cfg: Dict[str, Any],
         *,
+        policy_state: Optional[Dict[str, Any]] = None,
         fast_state: Optional[Dict[str, Any]] = None,
+        allow_legacy_fast_state: bool = False,
         force_frame: Optional[int] = None,
         force_action: Optional[int] = None,
+        force_actions: Optional[Dict[int, int]] = None,
     ) -> None:
-        fast_cfg = dict(cfg.get("fast_thinking", {}) or {})
-        if "lane_change_cooldown" in cfg:
-            fast_cfg["lane_change_cooldown"] = int(cfg.get("lane_change_cooldown", 0) or 0)
-        self.fast = FastThinker(lane_change_config=fast_cfg)
-        if fast_state is not None:
-            self.fast.restore_runtime_state(fast_state)
+        self.inner = OfflineDriverAgent(config=copy.deepcopy(dict(cfg or {})))
+        if policy_state is not None:
+            self.inner.restore_policy_state(copy.deepcopy(policy_state))
+        elif fast_state is not None:
+            if not allow_legacy_fast_state:
+                raise ValueError(
+                    "legacy fast-state restore requires explicit diagnostic opt-in"
+                )
+            self.inner.fast_thinker.restore_runtime_state(copy.deepcopy(fast_state))
+        self.fast = self.inner.fast_thinker
         self.force_frame = force_frame
         self.force_action = force_action
+        self.force_actions = {
+            int(frame): int(action)
+            for frame, action in dict(force_actions or {}).items()
+        }
         self.frame = 0
         self.fast_actions: Dict[int, int] = {}
         self.legal_actions: Dict[int, Tuple[int, ...]] = {}
@@ -97,26 +110,35 @@ class FastBranchAgent:
 
     def decide(self, state) -> Tuple[int, str, Dict[str, Any]]:
         frame = int(self.frame)
-        decision = self.fast.think(state)
-        self.fast_actions[frame] = int(decision.action)
+        action, reasoning, metadata = self.inner.decide(state)
+        self.fast_actions[frame] = int(action)
         self.legal_actions[frame] = tuple(int(action) for action in state.get_available_actions())
-        action = int(decision.action)
-        if self.force_frame is not None and frame == int(self.force_frame):
+        if frame in self.force_actions:
+            action = int(self.force_actions[frame])
+        elif self.force_frame is not None and frame == int(self.force_frame):
             if self.force_action is None:
                 raise ValueError("force_frame requires force_action")
             action = int(self.force_action)
         self.frame += 1
+        self.last_system_used = str(metadata.get("system_used", "fast"))
         return (
             action,
-            "[Fast matched rollout]",
+            str(reasoning or "[Fast matched rollout]"),
             {
+                **dict(metadata or {}),
                 "system_used": "fast",
                 "route_label": "matched_fast_rollout",
-                "route_score": 0.0,
-                "confidence": float(decision.confidence),
-                "latency_ms": float(decision.latency_ms),
             },
         )
+
+    def record_executed_action(self, action: int) -> None:
+        self.inner.record_executed_action(int(action))
+
+    def snapshot_policy_state(self) -> Dict[str, Any]:
+        return self.inner.snapshot_policy_state()
+
+    def restore_policy_state(self, snapshot: Dict[str, Any]) -> None:
+        self.inner.restore_policy_state(snapshot)
 
 
 def _write_csv(path: Path, rows: Sequence[Dict[str, Any]]) -> None:
@@ -130,15 +152,35 @@ def _write_csv(path: Path, rows: Sequence[Dict[str, Any]]) -> None:
 
 
 def _trace_paths(root: Path, seed: int) -> Tuple[Path, Path]:
-    setting = root / "always_fast" / f"always_fast_latency_1p7s_seed_{seed}"
-    reasoning = list(setting.glob(f"ep_{seed}/highway_{seed}_reasoning_records.json"))
-    physical = list(setting.glob(f"ep_{seed}/highway_{seed}_physical_frames.json"))
-    if len(reasoning) != 1 or len(physical) != 1:
-        raise RuntimeError(
-            f"seed {seed}: expected one reasoning and physical trace, found "
-            f"{len(reasoning)} and {len(physical)}"
-        )
-    return reasoning[0], physical[0]
+    layouts = {
+        "current": root / "always_fast" / "highway" / f"seed_{seed}" / f"ep_{seed}",
+        "legacy": (
+            root
+            / "always_fast"
+            / f"always_fast_latency_1p7s_seed_{seed}"
+            / f"ep_{seed}"
+        ),
+    }
+    complete: List[Tuple[Path, Path]] = []
+    incomplete: List[str] = []
+    for name, episode_dir in layouts.items():
+        reasoning = episode_dir / f"highway_{seed}_reasoning_records.json"
+        physical = episode_dir / f"highway_{seed}_physical_frames.json"
+        has_reasoning = reasoning.is_file()
+        has_physical = physical.is_file()
+        if has_reasoning and has_physical:
+            complete.append((reasoning, physical))
+        elif has_reasoning or has_physical:
+            incomplete.append(
+                f"{name} layout has reasoning={has_reasoning}, physical={has_physical}"
+            )
+    if len(complete) == 1:
+        return complete[0]
+    if len(complete) > 1:
+        raise RuntimeError(f"seed {seed}: ambiguous complete trace pairs across layouts")
+    if incomplete:
+        raise RuntimeError(f"seed {seed}: incomplete trace pair; " + "; ".join(incomplete))
+    raise RuntimeError(f"seed {seed}: no reasoning/physical trace pair found")
 
 
 def _load_trace(root: Path, seed: int) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -157,9 +199,17 @@ def _load_trace(root: Path, seed: int) -> Tuple[List[Dict[str, Any]], List[Dict[
     return records, frames
 
 
-def _build_fast_config(protocol_path: Path, seed: int, scratch: Path) -> Dict[str, Any]:
+def _build_fast_config(
+    protocol_path: Path,
+    seed: int,
+    scratch: Path,
+    *,
+    verified_floor_overlay: Optional[VerifiedFloorOverlay] = None,
+) -> Dict[str, Any]:
     protocol = load_formal_protocol(protocol_path)
     base_cfg = load_formal_base_config(protocol)
+    if verified_floor_overlay is not None:
+        base_cfg = apply_floor_overlay(base_cfg, verified_floor_overlay)
     group_cfg = dict((protocol.get("groups", {}) or {})["always_fast"] or {})
     cfg = build_group_config(
         base_cfg,
@@ -230,12 +280,12 @@ def _capture_release_snapshots(
                 raise RuntimeError(f"seed {seed}: target frame {frame} exceeds trace")
             max_position_error = max(max_position_error, _position_error(env, physical_frames[frame]))
             if frame in targets:
-                snapshots[frame] = ReleaseSnapshot(
+                snapshots[frame] = capture_release_snapshot(
+                    agent.inner,
                     frame=frame,
-                    env=copy.deepcopy(env),
-                    obs=copy.deepcopy(obs),
-                    fast_state=agent.fast.snapshot_runtime_state(),
-                    history=copy.deepcopy(history),
+                    env=env,
+                    obs=obs,
+                    history=history,
                     previous_action=int(state["action"]),
                 )
             obs, done = execute_episode_step(
@@ -287,6 +337,56 @@ def _acceleration(env) -> float:
         return float("nan")
 
 
+def _finite_or_none(value: Any) -> Optional[float]:
+    """Return a JSON-safe finite scalar for a branch trajectory."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _lane_id(env) -> Optional[int]:
+    vehicle = getattr(getattr(env, "unwrapped", env), "vehicle", None)
+    lane_index = getattr(vehicle, "lane_index", None) if vehicle is not None else None
+    if not isinstance(lane_index, (tuple, list)) or not lane_index:
+        return None
+    try:
+        return int(lane_index[-1])
+    except (TypeError, ValueError):
+        return None
+
+
+def _trajectory_step(
+    env: Any,
+    *,
+    frame: int,
+    effective_action: int,
+    ttc: float,
+    collision: bool,
+    terminal_cause: str,
+) -> Dict[str, Any]:
+    """Serialize the post-action state needed for an event-level comparison."""
+    vehicle = getattr(getattr(env, "unwrapped", env), "vehicle", None)
+    position = getattr(vehicle, "position", (float("nan"), float("nan")))
+    try:
+        position_x, position_y = float(position[0]), float(position[1])
+    except (IndexError, TypeError, ValueError):
+        position_x = position_y = float("nan")
+    return {
+        "frame": int(frame),
+        "position_x_m": _finite_or_none(position_x),
+        "position_y_m": _finite_or_none(position_y),
+        "speed_mps": _finite_or_none(getattr(vehicle, "speed", float("nan"))),
+        "lane_id": _lane_id(env),
+        "effective_action": int(effective_action),
+        "acceleration_mps2": _finite_or_none(_acceleration(env)),
+        "ttc_s": _finite_or_none(ttc),
+        "collision": int(bool(collision)),
+        "terminal_cause": str(terminal_cause),
+    }
+
+
 def _run_branch(
     snapshot: ReleaseSnapshot,
     cfg: Dict[str, Any],
@@ -300,7 +400,10 @@ def _run_branch(
     scenario.scenario_type = "highway"
     agent = FastBranchAgent(
         cfg,
-        fast_state=snapshot.fast_state,
+        policy_state=validate_release_snapshot_policy_state(
+            snapshot,
+            context=f"release rollout frame {snapshot.frame}",
+        ),
         force_frame=snapshot.frame if raw_action is not None else None,
         force_action=raw_action,
     )
@@ -321,6 +424,14 @@ def _run_branch(
     release_acceleration = float("nan")
     start_x = float(getattr(getattr(env, "unwrapped", env).vehicle, "position")[0])
     completed_steps = 0
+    terminal_cause = "horizon"
+    trajectory: List[Dict[str, Any]] = []
+    acceleration_samples: List[float] = []
+    jerk_samples: List[float] = []
+    previous_acceleration: Optional[float] = None
+    policy_frequency = float(cfg.get("policy_frequency", 10.0) or 10.0)
+    if not math.isfinite(policy_frequency) or policy_frequency <= 0.0:
+        raise ValueError("branch rollout requires a positive finite policy frequency")
     for offset in range(int(horizon)):
         frame = int(snapshot.frame + offset)
         reward_before = float(state.get("episode_reward", 0.0) or 0.0)
@@ -341,9 +452,27 @@ def _run_branch(
         discounted += (float(gamma) ** offset) * step_reward
         weight += float(gamma) ** offset
         event = state["event_log"][-1]
-        min_ttc = min(min_ttc, float(event.get("ttc", float("inf"))))
+        ttc = _finite_or_none(event.get("ttc", float("inf")))
+        min_ttc = min(min_ttc, ttc if ttc is not None else float("inf"))
         collision = bool(collision or event.get("crashed", False))
         completed_steps += 1
+        step_terminal_cause = str(event.get("terminal_cause", "running") or "running")
+        acceleration = _finite_or_none(_acceleration(env))
+        if acceleration is not None:
+            acceleration_samples.append(abs(acceleration))
+            if previous_acceleration is not None:
+                jerk_samples.append(abs(acceleration - previous_acceleration) * policy_frequency)
+            previous_acceleration = acceleration
+        trajectory.append(
+            _trajectory_step(
+                env,
+                frame=frame,
+                effective_action=int(state["action"]),
+                ttc=float("inf") if ttc is None else ttc,
+                collision=bool(event.get("crashed", False)),
+                terminal_cause=step_terminal_cause,
+            )
+        )
         if offset == 0:
             release_fast_action = int(agent.fast_actions[frame])
             release_legal_actions = tuple(agent.legal_actions[frame])
@@ -351,6 +480,7 @@ def _run_branch(
             release_target_speed = _target_speed(env)
             release_acceleration = _acceleration(env)
         if done:
+            terminal_cause = step_terminal_cause
             break
     end_x = float(getattr(getattr(env, "unwrapped", env).vehicle, "position")[0])
     normalized_return = discounted / weight if weight > 0 else float("nan")
@@ -371,6 +501,26 @@ def _run_branch(
         "collision": int(collision),
         "min_ttc": float(min_ttc),
         "progress_m": float(end_x - start_x),
+        "mean_abs_acceleration_mps2": (
+            float(sum(acceleration_samples) / len(acceleration_samples))
+            if acceleration_samples
+            else float("nan")
+        ),
+        "mean_abs_jerk_mps3": (
+            float(sum(jerk_samples) / len(jerk_samples))
+            if jerk_samples
+            else float("nan")
+        ),
+        "terminal_cause": str(terminal_cause),
+        "completed_horizon": bool(
+            completed_steps == int(horizon) and terminal_cause == "horizon"
+        ),
+        "branch_trajectory_json": json.dumps(
+            trajectory,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ),
         "utility": utility,
     }
 
@@ -395,6 +545,113 @@ def _selected_queries(records: Sequence[Dict[str, Any]], delay: float) -> Dict[s
     }
 
 
+def _delay_step_map(delays: Sequence[float], *, policy_frequency_hz: float = 10.0) -> Dict[float, int]:
+    """Resolve the fixed discrete release offset for each declared delay."""
+
+    frequency = float(policy_frequency_hz)
+    if not math.isfinite(frequency) or frequency <= 0.0:
+        raise ValueError("policy_frequency_hz must be positive and finite")
+    steps: Dict[float, int] = {}
+    for value in delays:
+        delay = float(value)
+        if not math.isfinite(delay) or delay < 0.0:
+            raise ValueError("delay values must be finite and nonnegative")
+        if delay in steps:
+            raise ValueError("delay values must be unique")
+        steps[delay] = int(math.ceil(frequency * delay))
+    if not steps:
+        raise ValueError("at least one fixed delay is required")
+    return steps
+
+
+def _selection_contract(
+    selected: Dict[str, Sequence[int]],
+    *,
+    seed: int,
+    record_count: int,
+    delays: Sequence[float],
+    horizon: int,
+) -> Tuple[List[Tuple[str, int, float, int]], List[Dict[str, Any]]]:
+    """Freeze main and fixed-query release eligibility before branch rollout.
+
+    Main allocator arms are evaluated at the nominal 1.7-s release delay.
+    The fixed RGD cohort is intentionally stricter: one query is retained only
+    when it has a complete continuation horizon at every prespecified delay.
+    This prevents delay-specific trace truncation from changing its denominator.
+    """
+
+    if int(record_count) < 0:
+        raise ValueError("record_count must be nonnegative")
+    if int(horizon) <= 0:
+        raise ValueError("horizon must be positive")
+    delay_steps = _delay_step_map(delays)
+    nominal_delay = 1.7
+    if nominal_delay not in delay_steps:
+        raise ValueError("the allocator comparison requires the nominal 1.7-s delay")
+
+    def normalized_frames(allocator: str) -> List[int]:
+        source = selected.get(allocator, ())
+        frames = [int(frame) for frame in source]
+        if any(frame < 0 for frame in frames):
+            raise ValueError(f"{allocator}: query frames must be nonnegative")
+        if frames != sorted(frames) or len(set(frames)) != len(frames):
+            raise ValueError(f"{allocator}: query frames must be unique and ordered")
+        return frames
+
+    release_specs: List[Tuple[str, int, float, int]] = []
+    accounting: List[Dict[str, Any]] = []
+    nominal_steps = delay_steps[nominal_delay]
+    for allocator in ("RGD", "TTC-delay", "TTC-risk"):
+        frames = normalized_frames(allocator)
+        evaluated = [
+            frame
+            for frame in frames
+            if int(frame + nominal_steps + int(horizon)) <= int(record_count)
+        ]
+        accounting.append(
+            {
+                "seed": int(seed),
+                "allocator": allocator,
+                "delay_s": nominal_delay,
+                "delay_steps": int(nominal_steps),
+                "scheduled_count": len(frames),
+                "excluded_count": len(frames) - len(evaluated),
+                "evaluated_count": len(evaluated),
+                "eligibility_rule": "release_frame_plus_full_rollout_horizon_within_trace",
+            }
+        )
+        release_specs.extend(
+            (allocator, int(frame), nominal_delay, int(frame + nominal_steps))
+            for frame in evaluated
+        )
+
+    rgd_frames = normalized_frames("RGD")
+    max_steps = max(delay_steps.values())
+    fixed_frames = [
+        frame
+        for frame in rgd_frames
+        if int(frame + max_steps + int(horizon)) <= int(record_count)
+    ]
+    for delay, steps in delay_steps.items():
+        accounting.append(
+            {
+                "seed": int(seed),
+                "allocator": "RGD-fixed",
+                "delay_s": float(delay),
+                "delay_steps": int(steps),
+                "scheduled_count": len(rgd_frames),
+                "excluded_count": len(rgd_frames) - len(fixed_frames),
+                "evaluated_count": len(fixed_frames),
+                "eligibility_rule": "common_fixed_query_cohort_with_full_rollout_horizon_at_all_delays",
+            }
+        )
+        release_specs.extend(
+            ("RGD-fixed", int(frame), float(delay), int(frame + steps))
+            for frame in fixed_frames
+        )
+    return release_specs, accounting
+
+
 def _process_seed(
     seed: int,
     trace_root: str,
@@ -408,27 +665,18 @@ def _process_seed(
     root = Path(trace_root)
     records, physical = _load_trace(root, seed)
     selected = _selected_queries(records, 1.7)
-    delay_steps = {float(delay): int(math.ceil(10.0 * float(delay))) for delay in delays}
-
-    release_specs: List[Tuple[str, int, float, int]] = []
-    for allocator in ("RGD", "TTC-risk"):
-        for query_frame in selected[allocator]:
-            release_frame = int(query_frame + delay_steps[1.7])
-            if release_frame + horizon <= len(records):
-                release_specs.append((allocator, int(query_frame), 1.7, release_frame))
-    # Fixed-query latency erosion: reuse only the RGD queries that have a full
-    # rollout horizon at every prespecified delay.
-    max_delay_steps = max(delay_steps.values())
-    fixed_queries = [
-        int(frame)
-        for frame in selected["RGD"]
-        if int(frame + max_delay_steps + horizon) <= len(records)
-    ]
-    for query_frame in fixed_queries:
-        for delay in delays:
-            release_specs.append(
-                ("RGD-fixed", query_frame, float(delay), int(query_frame + delay_steps[float(delay)]))
-            )
+    release_specs, selection_accounting = _selection_contract(
+        selected,
+        seed=int(seed),
+        record_count=len(records),
+        delays=delays,
+        horizon=int(horizon),
+    )
+    fixed_queries = {
+        int(query_frame)
+        for allocator, query_frame, _, _ in release_specs
+        if allocator == "RGD-fixed"
+    }
 
     unique_release_frames = sorted({spec[3] for spec in release_specs})
     scratch = Path(scratch_root) / f"seed_{seed}"
@@ -480,7 +728,11 @@ def _process_seed(
         outcome = release_results[release_frame]
         best_row = outcome["best_row"]
         record = records[query_frame]
-        query_opportunity, query_priority, query_alternatives = gate_values(record, delay)
+        components = _query_gate_components(record, delay)
+        query_opportunity = float(components["opportunity"])
+        query_priority = float(components["priority"])
+        query_alternatives = int(components["alternative_count"])
+        delay_steps = int(release_frame - query_frame)
         event_rows.append(
             {
                 "seed": int(seed),
@@ -488,6 +740,19 @@ def _process_seed(
                 "query_frame": int(query_frame),
                 "release_frame": int(release_frame),
                 "delay_s": float(delay),
+                "delay_steps": delay_steps,
+                "candidate_state_id": f"{seed}:{query_frame}:{delay_steps}",
+                "release_state_id": f"{seed}:{release_frame}",
+                "need_score": float(components["need_score"]),
+                "latency_survival": float(components["latency_survival"]),
+                "admissible_alternative_fraction": float(
+                    components["admissible_alternative_fraction"]
+                ),
+                "recovery_headroom": float(components["recovery_headroom"]),
+                "alternative_count": int(components["alternative_count"]),
+                "absolute_alternative_count": int(
+                    components["absolute_alternative_count"]
+                ),
                 "query_opportunity": float(query_opportunity),
                 "query_priority": float(query_priority),
                 "query_legal_alternatives": int(query_alternatives),
@@ -515,6 +780,7 @@ def _process_seed(
         "branches": branch_rows,
         "selected": {key: len(value) for key, value in selected.items()},
         "fixed_queries": len(fixed_queries),
+        "selection_accounting": selection_accounting,
         "max_position_error_m": float(max_position_error),
     }
 
@@ -596,6 +862,105 @@ def _cluster_bootstrap_difference(
             samples.append(rgd - ttc)
     low, high = np.quantile(np.asarray(samples), [0.025, 0.975])
     return float(point), float(low), float(high)
+
+
+def _cluster_bootstrap_paired_delay_difference(
+    rows: Sequence[Dict[str, Any]],
+    cohort: Sequence[int],
+    *,
+    lower_delay: float = 0.7,
+    upper_delay: float = 2.7,
+    draws: int = BOOTSTRAP_DRAWS,
+) -> Tuple[float, float, float, int]:
+    """Bootstrap the fixed-query endpoint difference with seed clustering.
+
+    A query must have both endpoint rollouts or neither.  Seeds that schedule
+    no fixed query are still part of ``cohort`` and remain available to every
+    bootstrap draw, which preserves the preregistered cluster population.
+    """
+
+    lower = float(lower_delay)
+    upper = float(upper_delay)
+    if not math.isfinite(lower) or not math.isfinite(upper) or lower == upper:
+        raise ValueError("paired delays must be distinct finite values")
+    if int(draws) <= 0:
+        raise ValueError("bootstrap draws must be positive")
+    seeds = tuple(int(seed) for seed in cohort)
+    if not seeds or len(set(seeds)) != len(seeds):
+        raise ValueError("paired bootstrap cohort must contain unique seeds")
+    seed_set = set(seeds)
+
+    def endpoint(value: Any) -> Optional[float]:
+        try:
+            delay = float(value)
+        except (TypeError, ValueError):
+            return None
+        if math.isclose(delay, lower, rel_tol=0.0, abs_tol=1e-12):
+            return lower
+        if math.isclose(delay, upper, rel_tol=0.0, abs_tol=1e-12):
+            return upper
+        return None
+
+    paired: Dict[Tuple[int, int], Dict[float, Dict[str, Any]]] = {}
+    for row in rows:
+        if str(row.get("allocator", "")) != "RGD-fixed":
+            continue
+        delay = endpoint(row.get("delay_s"))
+        if delay is None:
+            continue
+        seed = int(row["seed"])
+        query_frame = int(row["query_frame"])
+        if seed not in seed_set:
+            raise ValueError("paired delay row lies outside the declared cohort")
+        block = paired.setdefault((seed, query_frame), {})
+        if delay in block:
+            raise ValueError("fixed query does not form a complete paired block")
+        block[delay] = row
+
+    required = {lower, upper}
+    for key, block in paired.items():
+        if set(block) != required:
+            raise ValueError(f"fixed query {key} does not form a complete paired block")
+
+    by_seed: Dict[int, Dict[float, List[Dict[str, Any]]]] = {
+        seed: {lower: [], upper: []} for seed in seeds
+    }
+    for (seed, _), block in paired.items():
+        by_seed[seed][lower].append(block[lower])
+        by_seed[seed][upper].append(block[upper])
+
+    def rate(sampled: Sequence[int], delay: float) -> float:
+        selected = [
+            row
+            for seed in sampled
+            for row in by_seed[int(seed)][delay]
+        ]
+        if not selected:
+            return float("nan")
+        return float(
+            sum(int(row["corrective_set_nonempty"]) for row in selected)
+            / len(selected)
+        )
+
+    point_lower = rate(seeds, lower)
+    point_upper = rate(seeds, upper)
+    point = (
+        float(point_lower - point_upper)
+        if math.isfinite(point_lower) and math.isfinite(point_upper)
+        else float("nan")
+    )
+    rng = np.random.default_rng(BOOTSTRAP_SEED)
+    samples: List[float] = []
+    for _ in range(int(draws)):
+        sampled = rng.choice(seeds, size=len(seeds), replace=True).tolist()
+        lower_rate = rate(sampled, lower)
+        upper_rate = rate(sampled, upper)
+        if math.isfinite(lower_rate) and math.isfinite(upper_rate):
+            samples.append(float(lower_rate - upper_rate))
+    if not samples:
+        return point, float("nan"), float("nan"), 0
+    low, high = np.quantile(np.asarray(samples), [0.025, 0.975])
+    return float(point), float(low), float(high), len(samples)
 
 
 def _summarize(rows: Sequence[Dict[str, Any]], delays: Sequence[float]) -> List[Dict[str, Any]]:

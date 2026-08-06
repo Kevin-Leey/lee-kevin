@@ -1,7 +1,7 @@
 import sqlite3
 import numpy as np
 from typing import List
-from highway_env.envs import AbstractEnv
+from highway_env.envs.common.abstract import AbstractEnv
 from highway_env.road.road import RoadNetwork, LaneIndex
 from highway_env.road.lane import StraightLane, CircularLane
 from highway_env.vehicle.controller import MDPVehicle

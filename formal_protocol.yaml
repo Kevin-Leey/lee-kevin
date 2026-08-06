@@ -1,0 +1,978 @@
+protocol_name: rgd_tvt_action_aligned_release_v13
+protocol_version: 13
+description: "Action-aligned release protocol. The v12 query gate and its locked floors are retained unchanged; v13 revalidates the opportunity and releases a delayed proposal only when its post-safety action improves the current recovery cost by a fixed margin."
+
+tvt_submission_contract:
+  manuscript: paper/main.tex
+  compiled_pdf: paper/main.pdf
+  bibliography: paper/references.bib
+  main_environment: highway-v0
+  calibration_seeds: 2000-2039
+  development_seeds: 4000-4029
+  main_seeds: 5000-5029
+  comparator_calibration_seeds: 30-59
+  latency_endpoint_seeds: 5000-5029
+  latency_endpoint_status: paired_rgd_latency_sweep_paper_facing
+  mechanism_evaluation_seeds: 6000-6019
+  mechanism_cohort_status: locked_v13_mechanism_cohort_not_used_for_tuning
+  mechanism_evaluation_method_version: action_aligned_release_gate_v13
+  mechanism_evaluation_compatibility: v13_system_with_identifiable_gate_v12_query_signals
+  component_validation_seeds: 3000-3029
+  component_validation_status: legacy_v12_holdout_not_used_for_v13_selection
+  diagnostic_only_seed_blocks: [60-66, 100-189, 1000-1029]
+  diagnostic_only_policy: never_use_for_v12_gate_parameter_selection_or_confirmation
+  comparator_trigger_calibration:
+    seed_range: 30-59
+    status: frozen_before_identifiable_gate_v12
+    purpose: scheduled_trigger_frequency_only
+    outcome_labels_used: false
+    exposure_matching_claim: forbidden
+    main_claim_uses: actual_query_count_and_query_cost_per_correction
+  rgd_method_version: action_aligned_release_gate_v13
+  query_gate_method_version: identifiable_gate_v12
+  release_contract_version: action_cost_alignment_v2
+  prior_paper_result_method_version: support_breadth_v11
+  earlier_paper_result_method_version: raw_affordance_v10
+  main_delay_s: 0.0
+  main_delay_steps: 0
+  fixed_query_delays_s: [0.7, 1.7, 2.7]
+  ttc_delay_threshold: 0.208
+  release_rollout:
+    horizon_steps: 20
+    gamma: 0.99
+    corrective_margin: 0.02
+    utility: discounted_normalized_reward_minus_collision_indicator
+    effective_action_identity:
+      - post_safety_discrete_command
+      - post_bridge_target_speed
+    branch_continuation: complete_fast_policy
+    bootstrap_unit: simulator_seed
+    bootstrap_draws: 20000
+  component_ablation:
+    artifact: null
+    design: matched_four_arm_leave_one_component_out
+    components: [latency_survival, relative_support_maneuver_breadth, corrective_recovery_headroom]
+    seed_range: {start: 6000, end: 6019, count: 20}
+    delay_s: [0.0]
+    horizon_steps: 20
+    gamma: 0.99
+    corrective_margin: 0.02
+    latency_survival_floor: 0.05
+    maneuver_breadth_floor: 0.55
+    corrective_headroom_floor: 0.10
+    state_need_floor: 0.20
+    floor_status: inherited_unchanged_from_v12_calibration_lock
+    budget: 6
+    cooldown_frames: 20
+    cooldown_minimum_query_frame_gap: 21
+    removed_component_policy: remove_only_the_named_predicate
+    absolute_alternative_feasibility_non_ablatable: true
+    alternative_metric_source: relative_support_weighted_maneuver_family_breadth
+    support_breadth_temperature: 0.10
+    support_breadth_formula: family_min_support_cost_relative_to_best_exponential_mass_over_all_alternative_families
+    headroom_metric_source: incumbent_relative_action_recovery_cost_margin
+    need_metric_source: state_hazard_and_pre_screen_only
+    viable_cost_threshold: 0.55
+    corrective_headroom_kappa: 0.55
+    corrective_headroom_kappa_source: recoverable_cost_threshold
+    need_formula: max(need_state_hazard,need_pre_screen_hazard)
+    latency_policy_frequency_hz: 10.0
+    latency_safety_reserve_s: 0.0
+    latency_execution_available_required: true
+    threshold_policy: fixed_across_cells_without_retuning
+    bootstrap_unit: simulator_seed
+    bootstrap_draws: 20000
+    bootstrap_seed: 20260721
+    paper_acceptance:
+      descriptive_mechanism_analysis_only: true
+      matched_release_states_required: true
+      seed_cluster_confidence_intervals_required: true
+      exact_action_provenance_required: true
+  v12_calibration:
+    parameter_selection_seed_range: {start: 2000, end: 2039, count: 40}
+    fixed_parameter_go_no_go_seed_range: {start: 2040, end: 2059, count: 20}
+    confirmatory_holdout_seed_range: {start: 3000, end: 3029, count: 30}
+    delay_strata_s: [0.7, 1.7, 2.7]
+    floor_grid:
+      latency_survival: {start: 0.05, end: 0.90, step: 0.05}
+      maneuver_family_breadth: {start: 0.05, end: 0.90, step: 0.05}
+      corrective_recovery_headroom: {start: 0.05, end: 0.90, step: 0.05}
+      state_need: {fixed: 0.20}
+    scheduled_exposure_per_delay:
+      calibration_40_seeds: {min: 120, max: 200}
+      go_no_go_20_seeds: {min: 60, max: 100}
+      holdout_30_seeds: {min: 90, max: 150}
+    identifiability_constraints:
+      minimum_component_levels: 5
+      minimum_component_q90_minus_q10: 0.20
+      minimum_leave_one_out_changed_opportunities: 30
+      minimum_leave_one_out_seed_coverage: 10
+      minimum_changed_union_fraction: 0.10
+      maximum_leave_one_out_change_set_jaccard: 0.90
+    selection_objective: maximize_minimum_full_minus_leave_one_out_cset_then_minimize_query_cost_per_correction_then_choose_stricter_floors
+    validation_policy: go_no_go_and_holdout_use_the_single_locked_parameter_tuple_without_search
+    holdout_open_count: 0
+    holdout_recalibration_policy: forbidden
+  evidence_artifacts:
+    compatibility:
+      required_method_version: action_aligned_release_gate_v13
+      required_query_gate_method_version: identifiable_gate_v12
+      required_release_contract_version: action_cost_alignment_v2
+      prior_method_version: support_breadth_v11
+      cross_method_version_policy: reject
+      missing_manifest_method_version_policy: reject
+    artifacts:
+      main_results:
+        paper_facing: true
+        status: locked_pending_v13_main_execution
+        method_version: action_aligned_release_gate_v13
+        artifact: null
+        manifest: null
+        data_files: [main_results.csv]
+        seed_contract: main_seeds
+        required_groups:
+          - rgd_fixed_policy
+          - always_fast
+          - always_slow
+          - random_budget
+          - uncertainty_budget
+          - risk_budget
+        environment: highway-v0
+        episodes_per_key: 1
+        zero_query_allowed_groups: [always_fast]
+        technical_slow_failure_policy: reject_any_scheduled_slow_failure_or_fallback
+      transfer_results:
+        paper_facing: true
+        status: pending_v13_generalization
+        method_version: action_aligned_release_gate_v13
+        artifact: null
+        manifest: null
+        data_files: [lane_density_episode_metrics.csv]
+      release_rollout:
+        paper_facing: true
+        status: pending_v13_mechanism_evaluation
+        method_version: action_aligned_release_gate_v13
+        artifact: null
+        manifest: null
+        data_files:
+          - release_rollout_summary.csv
+          - release_rollout_events.csv
+          - release_rollout_branches.csv
+        summary_file: release_rollout_summary.csv
+        summary_manifest_key: summary
+        seed_contract: mechanism_evaluation_seeds
+        required_manifest_values:
+          method_version: action_aligned_release_gate_v13
+          query_gate_method_version: identifiable_gate_v12
+          release_contract_version: action_cost_alignment_v2
+          seed_is_experimental_unit: true
+          alternative_metric_source: relative_support_weighted_maneuver_family_breadth
+          headroom_metric_source: incumbent_relative_action_recovery_cost_margin
+          absolute_alternative_feasibility_non_ablatable: true
+          viable_cost_threshold: 0.55
+          horizon_steps: 20
+          gamma: 0.99
+          epsilon: 0.02
+          ttc_delay_threshold: 0.208
+      component_ablation:
+        paper_facing: true
+        status: pending_v13_mechanism_evaluation
+        method_version: action_aligned_release_gate_v13
+        artifact: null
+        manifest: null
+        data_files:
+          - component_ablation_summary.csv
+          - component_ablation_events.csv
+          - component_ablation_by_seed.csv
+          - component_ablation_main_effects.csv
+        summary_file: component_ablation_summary.csv
+        summary_manifest_key: summary
+        seed_contract: mechanism_evaluation_seeds
+        required_manifest_values:
+          method_version: action_aligned_release_gate_v13
+          query_gate_method_version: identifiable_gate_v12
+          release_contract_version: action_cost_alignment_v2
+          legal_action_provenance: exact
+          seed_is_experimental_unit: true
+          query_events_nested_within_seed: true
+          design: matched four-arm leave-one-component-out
+          alternative_metric_source: relative_support_weighted_maneuver_family_breadth
+          headroom_metric_source: incumbent_relative_action_recovery_cost_margin
+          need_metric_source: state_hazard_and_pre_screen_only
+          absolute_alternative_feasibility_non_ablatable: true
+          viable_cost_threshold: 0.55
+          delay_s: [0.0]
+          horizon_steps: 20
+          gamma: 0.99
+          epsilon: 0.02
+          latency_survival_floor: calibration_locked
+          maneuver_breadth_floor: calibration_locked
+          corrective_headroom_floor: calibration_locked
+          state_need_floor: 0.20
+          budget: 6
+          cooldown_frames: 20
+          cooldown_minimum_query_frame_gap: 21
+          bootstrap_draws: 20000
+      executor_diagnostics:
+        paper_facing: true
+        status: pending_v13_main_execution
+        method_version: action_aligned_release_gate_v13
+        artifact: null
+        manifest: null
+        data_files: [executor_diagnostics.csv]
+  transfer_added_delay_s: 0.0
+  transfer_grid:
+    lanes: [4, 5, 6]
+    vehicles_density: [2.0, 3.0]
+    seeds: 0-29
+  table_vii:
+    label: Table VII
+    environment: highway-v0
+    additional_latency_s: 0.0
+    latency_safety_reserve_s: 0.0
+    allocators: [rgd_fixed_policy, risk_budget, always_fast]
+    lanes: [4, 5, 6]
+    densities: [2.0, 3.0]
+    seed_range: {start: 0, end: 29, count: 30}
+    episodes_per_setting: 1
+    total_episodes: 540
+    simulation_duration_s: 30
+    policy_frequency_hz: 10
+    simulation_frequency_hz: 10
+    vehicle_count: 30
+    preserve_executor_action: true
+    primary_metrics: [Dis., Coll., Suc.]
+    aggregation:
+      unit: episode
+      distance: complete_episode_distance_mean_m
+      collision: observed_collision_count_over_episode_denominator
+      success: completed_episode_fraction
+      confidence_interval: seed_cluster_bootstrap_95_percent
+    comparison_rule: "retain all six lane-density cells; select no cell or metric after observing outcomes"
+    risk_calibration_enabled: false
+    llm_retry:
+      max_attempts_including_initial_request: 3
+      initial_backoff_s: 0.5
+      schedule: exponential
+      retryable_http_statuses: [408, 409, 425, 429, 500, 502, 503, 504]
+      retryable_transport_failures: [timeout, connection_error]
+    slow_executor_models:
+      - provider: siliconflow
+        model: Qwen/Qwen3-8B
+        label: Qwen3-8B
+        base_url: https://api.siliconflow.cn/v1
+      - provider: siliconflow
+        model: Qwen/Qwen2.5-7B-Instruct
+        label: Qwen2.5-7B
+        base_url: https://api.siliconflow.cn/v1
+      - provider: siliconflow
+        model: Qwen/Qwen3.5-4B
+        label: Qwen3.5-4B
+        base_url: https://api.siliconflow.cn/v1
+      - provider: openai_compatible
+        model: gpt-5.6-sol
+        label: GPT-5.6-sol
+        base_url: https://bizdecipher.com/v1
+  supplementary_material: false
+
+experiment_sets:
+  highway_envs: &highway_formal_envs
+    - highway-v0
+    - intersection-v0
+    - merge-v0
+    - roundabout-v0
+  metadrive_envs: &metadrive_formal_envs
+    - metadrive-highway-v0
+    - metadrive-merge-v0
+    - metadrive-intersection-v0
+    - metadrive-roundabout-v0
+  all_formal_envs: &all_formal_envs
+    - highway-v0
+    - intersection-v0
+    - merge-v0
+    - roundabout-v0
+    - metadrive-highway-v0
+    - metadrive-merge-v0
+    - metadrive-intersection-v0
+    - metadrive-roundabout-v0
+  highway_formal_groups: &highway_formal_groups
+    - rgd_fixed_policy
+    - rgd_full_system
+    - always_fast
+    - always_slow
+    - random_budget
+    - uncertainty_budget
+    - risk_budget
+    - rule_safety_only
+    - rgd_margin_only
+    - rgd_corridor_only
+    - rgd_budget_only
+    - kinematic_risk_slow_path
+  metadrive_formal_groups: &metadrive_formal_groups
+    - rgd_fixed_policy
+    - rgd_full_system
+    - always_fast
+    - always_slow
+    - random_budget
+    - uncertainty_budget
+    - risk_budget
+
+claim_guardrails:
+  single_core_method_name: Recoverability-Gated Deliberation
+  primary_evaluation_subject: fixed-policy RGD
+  recoverability_object_status: outcome_grounded_release_rollout_label_on_iterative_fast_trajectory_cohort
+  recoverability_core_variables:
+    - latency_survival
+    - action_support_breadth
+    - recovery_headroom
+    - recoverable_deliberation_priority
+  main_endpoint_status: descriptive_visible_during_hidden_slower_bridge_repair
+  prohibited_claims:
+    - completion_superiority
+    - calibrated_corrective_set_probability
+    - safety_certificate
+    - uniform_cross_setting_superiority
+
+execution:
+  envs: *all_formal_envs
+  result_roots_by_env_family:
+    highway_env: results/highway_result
+    metadrive: results/metadrive_result
+  partitions:
+    highway_env:
+      status: formal_primary_mechanism_partition
+      result_root: results/highway_result
+      envs: *highway_formal_envs
+      groups: *highway_formal_groups
+    metadrive:
+      status: formal_shifted_stress_partition
+      result_root: results/metadrive_result
+      envs: *metadrive_formal_envs
+      groups: *metadrive_formal_groups
+  group_env_matrix:
+    rgd_fixed_policy: *all_formal_envs
+    rgd_full_system: *all_formal_envs
+    always_fast: *all_formal_envs
+    always_slow: *all_formal_envs
+    random_budget: *all_formal_envs
+    uncertainty_budget: *all_formal_envs
+    risk_budget: *all_formal_envs
+    rule_safety_only: *highway_formal_envs
+    rgd_margin_only: *highway_formal_envs
+    rgd_corridor_only: *highway_formal_envs
+    rgd_budget_only: *highway_formal_envs
+    kinematic_risk_slow_path: *highway_formal_envs
+  quick_check:
+    seeds: 5
+    episodes: 1
+  formal_run:
+    seeds: 30
+    episodes: 1
+
+reference_partitions:
+  metadrive_shifted_stress:
+    result_root: results/metadrive_result
+    bundle_stamp: 2026-05-01/00-33-16
+    status: historical_formal_partition_previous_bundle
+    envs: *metadrive_formal_envs
+    groups: *metadrive_formal_groups
+
+runtime_config:
+  protocol_name: rgd_tvt_action_aligned_release_v13
+  rgd_system_method_version: action_aligned_release_gate_v13
+  rgd_query_gate_method_version: identifiable_gate_v12
+  rgd_release_contract_version: action_cost_alignment_v2
+  hidden_slower_bridge:
+    enable: true
+  closed_loop_latency_replay:
+    enable: false
+    extra_latency_s: 0.0
+    delay_steps: 0
+    target_systems:
+      - slow
+  safety_stack_mode: unified_arbitration
+  success_metric_mode: completion_threshold
+  QWEN_REQUEST_TIMEOUT_S: 120.0
+  LLM_MAX_ATTEMPTS: 3
+  LLM_RETRY_BACKOFF_S: 0.5
+  slow_call_budget: 6
+  slow_call_cooldown_frames: 20
+  rgd_min_observation_frames: 1
+  rgd_predicted_slow_latency_s: 0.0
+  rgd_predicted_slow_latency_source: locked_to_closed_loop_latency_replay
+  rgd_latency_safety_reserve_s: 0.0
+  rgd_decision_threshold: 0.0
+  rgd_decision_threshold_source: legacy_field_ignored_by_identifiable_gate_v12
+  rgd_threshold_selection_rule: four_serial_floors_locked_by_v12_calibration_manifest
+  rgd_threshold_claim_scope: calibration_pending_not_paper_facing
+  rgd_threshold_audit_band: 0.03
+  rgd_decision_threshold_by_env: &rgd_thresholds
+    highway-v0: 0.0
+    merge-v0: 0.0
+    intersection-v0: 0.0
+    roundabout-v0: 0.0
+    metadrive-highway-v0: 0.0
+    metadrive-merge-v0: 0.0
+    metadrive-intersection-v0: 0.0
+    metadrive-roundabout-v0: 0.0
+  target_speed_max: 48.0
+  target_speed_max_by_env:
+    highway-v0: 30.0
+    merge-v0: 32.0
+    intersection-v0: 18.0
+    roundabout-v0: 30.0
+    metadrive-highway-v0: 48.0
+    metadrive-merge-v0: 32.0
+    metadrive-intersection-v0: 18.0
+    metadrive-roundabout-v0: 30.0
+  target_speed_min: 18.0
+  target_speed_min_by_env:
+    highway-v0: 20.0
+    merge-v0: 18.0
+    intersection-v0: 0.0
+    roundabout-v0: 4.0
+    metadrive-highway-v0: 20.0
+    metadrive-merge-v0: 18.0
+    metadrive-intersection-v0: 0.0
+    metadrive-roundabout-v0: 4.0
+  target_speed_count_by_env:
+    highway-v0: 3
+  lane_change_cooldown: 2
+  safety_thresholds: &base_safety_thresholds
+    ttc_critical: 1.5
+    ttc_warning: 1.9
+    thw_critical: 0.8
+    thw_warning: 1.1
+    min_front_distance: 10.5
+    min_safe_speed: 20.0
+    max_safe_speed: 32.0
+    min_lane_gap: 8.0
+  rss_params: &base_rss_params
+    reaction_time: 0.25
+    max_accel: 1.0
+    min_brake_decel: 4.5
+    max_brake_decel: 4.5
+    safety_margin: 1.0
+    cross_traffic_factor: 0.65
+    cross_traffic_commitment_margin: 1.1
+    slack: 0.15
+    tier_slack:
+      high: 0.2
+      normal: 0.15
+      low: 0.05
+  slow_thinking:
+    max_tokens: 64
+    executor: online_llm
+    risk_calibration:
+      enable: false
+    trace_cache:
+      enable: false
+      ttl_seconds: 6.0
+      max_entries: 1024
+      reuse_decision: true
+    risk_coupling: &base_risk_coupling
+      core_story:
+        rgd_route_score_requires_soft_recoverability: true
+        rgd_latency_survival_floor: 0.05
+        rgd_maneuver_breadth_floor: 0.55
+        rgd_corrective_headroom_floor: 0.10
+        rgd_state_need_floor: 0.20
+        v12_floor_status: inherited_unchanged_from_v12_calibration_lock
+      failure_pre_screen:
+        enable: true
+        ttc_threshold_seconds: 2.2
+        front_distance_threshold_m: 10.0
+        cross_traffic_threshold_m: 18.0
+        score_threshold: 0.55
+        soft_recoverability_floor: 0.2
+        enable_by_env:
+          intersection-v0: true
+          roundabout-v0: true
+        cross_traffic_threshold_m_by_env:
+          intersection-v0: 22.0
+          roundabout-v0: 24.0
+          metadrive-intersection-v0: 22.0
+          metadrive-roundabout-v0: 24.0
+        roundabout_adjacent_conflict_threshold_m_by_env:
+          roundabout-v0: 18.0
+      lane_change_objective_penalty: 0.0
+      lane_change_guard:
+        lane_change_min_front_gap: 16.0
+        lane_change_min_rear_gap: 10.0
+        lane_change_front_headway_seconds: 0.65
+        lane_change_rear_headway_seconds: 0.55
+        lane_change_high_speed_rear_gap: 18.0
+      kinematic_rollout_steps: 5
+      kinematic_rollout_dt: 0.2
+
+runtime_config_by_env:
+  highway-v0:
+    simulation_duration: 30
+    vehicles_density: 2.0
+    vehicle_count: 30
+    ego_spacing: 2.0
+    initial_speed: 26.0
+    lanes_count: 4
+    policy_frequency: 10
+    simulation_frequency: 10
+    target_speed_max: 30.0
+    target_speed_min: 20.0
+    target_speed_count: 3
+    success_completion_threshold: 0.999
+    safety_thresholds:
+      <<: *base_safety_thresholds
+      min_lane_gap: 7.0
+    rss_params:
+      <<: *base_rss_params
+      cross_traffic_factor: 0.65
+  merge-v0:
+    simulation_duration: 45
+    vehicles_density: 1.8
+    vehicle_count: 8
+    initial_speed: 22.0
+    lanes_count: 4
+    policy_frequency: 1
+    simulation_frequency: 15
+    target_speed_max: 32.0
+    target_speed_min: 18.0
+  intersection-v0:
+    simulation_duration: 45
+    vehicles_density: 1.2
+    vehicle_count: 8
+    initial_speed: 6.5
+    policy_frequency: 2
+    simulation_frequency: 15
+    target_speed_max: 18.0
+    target_speed_min: 0.0
+    intersection_close_front_start_clamp:
+      enable: true
+      distance_m: 8.0
+      lateral_m: 2.8
+      speed_mps: 4.0
+  roundabout-v0:
+    simulation_duration: 45
+    vehicles_density: 1.5
+    vehicle_count: 8
+    initial_speed: 4.0
+    policy_frequency: 1
+    simulation_frequency: 15
+    target_speed_max: 30.0
+    target_speed_min: 4.0
+    roundabout_entry_compression_guard:
+      enable: true
+      nearest_distance_m: 28.0
+      speed_floor_mps: 15.0
+      speed_time_gap_s: 1.55
+      force_initial_slow_frames: 3
+      initial_slow_relative_speed_ceiling_mps: 2.2
+  metadrive-highway-v0:
+    simulation_duration: 120
+    target_speed_max: 48.0
+    target_speed_min: 20.0
+    metadrive_eval:
+      metadrive_horizon: 120
+      metadrive_traffic_density: 0.46
+      metadrive_spawn_speed: 11.0
+    safety_thresholds:
+      <<: *base_safety_thresholds
+    rss_params:
+      <<: *base_rss_params
+  metadrive-merge-v0:
+    simulation_duration: 120
+    target_speed_max: 32.0
+    target_speed_min: 18.0
+    metadrive_eval:
+      metadrive_horizon: 120
+      metadrive_traffic_density: 0.62
+      metadrive_spawn_speed: 11.0
+    safety_thresholds:
+      <<: *base_safety_thresholds
+    rss_params:
+      <<: *base_rss_params
+  metadrive-intersection-v0:
+    simulation_duration: 480
+    target_speed_max: 18.0
+    target_speed_min: 0.0
+    metadrive_eval:
+      metadrive_horizon: 480
+      metadrive_num_scenarios: 2000
+      metadrive_start_seed_base: 5
+      metadrive_random_seed: 0
+      metadrive_traffic_density: 0.40
+      metadrive_random_spawn_lane_index: true
+    safety_thresholds:
+      <<: *base_safety_thresholds
+    rss_params:
+      <<: *base_rss_params
+  metadrive-roundabout-v0:
+    simulation_duration: 480
+    target_speed_max: 30.0
+    target_speed_min: 4.0
+    metadrive_eval:
+      metadrive_horizon: 480
+      metadrive_num_scenarios: 2000
+      metadrive_start_seed_base: 5
+      metadrive_random_seed: 0
+      metadrive_traffic_density: 0.50
+      metadrive_random_spawn_lane_index: true
+    safety_thresholds:
+      <<: *base_safety_thresholds
+    rss_params:
+      <<: *base_rss_params
+
+groups:
+  rgd_fixed_policy:
+    id: P1
+    paper_role: paper_reference
+    publication_track: main_text
+    theory_family: recoverability_reference
+    alternative_explanation_axis: target_method
+    ablation_dimension: full_method
+    mechanism_profile:
+      rgd_signal_provider: true
+    runtime_overrides:
+      protocol_name: rgd_fixed_policy
+      slow_call_budget: 6
+      slow_call_cooldown_frames: 20
+      SILICONFLOW_CHAT_MODEL: Qwen/Qwen3-8B
+      closed_loop_latency_replay:
+        release_opportunity_revalidation:
+          enable: true
+          action_cost_alignment:
+            enable: true
+            cost_margin: 0.02
+            required_method_version: identifiable_gate_v12
+            required_raw_cost_source: safety_cost_decomposition
+      highway_v0_env:
+        ego_spacing: 2.0
+
+  rgd_full_system:
+    id: P2
+    paper_role: paper_system_reference
+    publication_track: archive_only
+    theory_family: full_system_upper_bound
+    alternative_explanation_axis: support_enhanced_upper_bound
+    ablation_dimension: support_stack_enabled
+    mechanism_profile:
+      rgd_signal_provider: true
+    runtime_overrides:
+      protocol_name: rgd_full_system
+      slow_call_budget: 6
+      slow_call_cooldown_frames: 20
+      SILICONFLOW_CHAT_MODEL: Qwen/Qwen3-8B
+      closed_loop_latency_replay:
+        release_opportunity_revalidation:
+          enable: true
+          action_cost_alignment:
+            enable: true
+            cost_margin: 0.02
+            required_method_version: identifiable_gate_v12
+            required_raw_cost_source: safety_cost_decomposition
+      highway_v0_env:
+        ego_spacing: 2.0
+      enable_memory_retrieval: true
+      few_shot_num: 3
+      memory_path: memories/state_mem/state_memory.db
+      hard_case_sampling:
+        enable: true
+        ttc_threshold: 2.0
+        thw_threshold: 1.0
+        min_distance_threshold: 8.0
+        max_cases_per_episode: 5
+        min_frame_gap: 3
+        prefer_collision: true
+      slow_thinking:
+        executor: online_llm
+        trace_cache:
+          enable: true
+          ttl_seconds: 6.0
+          max_entries: 1024
+          reuse_decision: true
+        risk_coupling:
+          <<: *base_risk_coupling
+          failure_pre_screen:
+            enable: true
+            ttc_threshold_seconds: 2.2
+            front_distance_threshold_m: 10.0
+            cross_traffic_threshold_m: 18.0
+            score_threshold: 0.55
+            soft_recoverability_floor: 0.2
+
+  always_fast:
+    id: P3
+    paper_role: paper_baseline
+    publication_track: main_text
+    theory_family: no_selective_compute
+    alternative_explanation_axis: selective_compute_not_needed
+    ablation_dimension: compute_allocation_removed
+    mechanism_profile:
+      rgd_signal_provider: true
+    runtime_overrides:
+      protocol_name: always_fast
+      system_routing:
+        simple: fast
+        complex: fast
+
+  always_slow:
+    id: P4
+    paper_role: paper_baseline
+    publication_track: main_text
+    theory_family: no_selective_compute
+    alternative_explanation_axis: selective_compute_not_needed
+    ablation_dimension: compute_allocation_collapsed
+    paper_display_name: Always-trigger Slow (budget-constrained)
+    mechanism_profile:
+      rgd_signal_provider: true
+    runtime_overrides:
+      protocol_name: always_slow
+      slow_call_budget: 6
+      slow_call_cooldown_frames: 20
+      system_routing:
+        simple: slow
+        complex: slow
+
+  random_budget:
+    id: P5
+    paper_role: paper_baseline
+    publication_track: main_text
+    theory_family: shared_budget_allocator_control
+    alternative_explanation_axis: recoverability_signal_not_needed
+    ablation_dimension: trigger_replaced_with_random_allocation
+    paper_display_name: Random trigger (budget-constrained)
+    mechanism_profile:
+      rgd_signal_provider: true
+    runtime_overrides:
+      protocol_name: random_budget
+      slow_call_budget: 6
+      slow_call_cooldown_frames: 20
+      slow_thinking:
+        executor: online_llm
+        risk_coupling:
+          <<: *base_risk_coupling
+          core_story:
+            rgd_route_score_requires_soft_recoverability: true
+            paper_baseline_trigger_mode: random_budget
+            paper_baseline_random_slow_probability: 0.02
+            paper_baseline_exposure_calibration: prefrozen_trigger_frequency_only_30_59_no_outcome_labels
+
+  uncertainty_budget:
+    id: P11
+    paper_role: paper_baseline
+    publication_track: main_text
+    theory_family: shared_budget_allocator_control
+    alternative_explanation_axis: uncertainty_signal_suffices
+    ablation_dimension: trigger_replaced_with_uncertainty_allocation
+    paper_display_name: Uncertainty trigger (budget-constrained)
+    mechanism_profile:
+      rgd_signal_provider: true
+    runtime_overrides:
+      protocol_name: uncertainty_budget
+      slow_call_budget: 6
+      slow_call_cooldown_frames: 20
+      slow_thinking:
+        executor: online_llm
+        risk_coupling:
+          <<: *base_risk_coupling
+          core_story:
+            rgd_route_score_requires_soft_recoverability: true
+            paper_baseline_trigger_mode: uncertainty
+            paper_baseline_uncertainty_cutoff: 1.00
+            paper_baseline_exposure_probability: 0.04
+            paper_baseline_exposure_calibration: prefrozen_trigger_frequency_only_30_59_no_outcome_labels
+
+  risk_budget:
+    id: P12
+    paper_role: paper_baseline
+    publication_track: main_text
+    theory_family: shared_budget_allocator_control
+    alternative_explanation_axis: instantaneous_risk_signal_suffices
+    ablation_dimension: trigger_replaced_with_ttc_risk_allocation
+    paper_display_name: TTC-risk trigger (budget-constrained)
+    mechanism_profile:
+      rgd_signal_provider: true
+    runtime_overrides:
+      protocol_name: risk_budget
+      slow_call_budget: 6
+      slow_call_cooldown_frames: 20
+      slow_thinking:
+        executor: online_llm
+        risk_coupling:
+          <<: *base_risk_coupling
+          core_story:
+            rgd_route_score_requires_soft_recoverability: true
+            paper_baseline_trigger_mode: ttc
+            paper_baseline_ttc_cutoff: 0.43
+            paper_baseline_exposure_calibration: prefrozen_trigger_frequency_only_30_59_no_outcome_labels
+
+  rule_safety_only:
+    id: P6
+    paper_role: paper_baseline
+    publication_track: archive_only
+    theory_family: safety_shell_explanation
+    alternative_explanation_axis: safety_shell_explains_gains
+    ablation_dimension: rgd_removed
+    mechanism_profile:
+      rgd_signal_provider: false
+    runtime_overrides:
+      protocol_name: rule_safety_only
+      lane_change_cooldown: 2
+      system_routing:
+        simple: fast
+        complex: fast
+
+  rgd_margin_only:
+    id: P7
+    paper_role: paper_baseline
+    publication_track: archive_only
+    theory_family: recoverability_ablation
+    alternative_explanation_axis: minimal_recoverability_dimension
+    ablation_dimension: margin_only
+    mechanism_profile:
+      rgd_signal_provider: true
+    runtime_overrides:
+      protocol_name: rgd_margin_only
+      slow_call_budget: 6
+      slow_call_cooldown_frames: 20
+      lane_change_cooldown: 2
+      slow_thinking:
+        executor: online_llm
+        risk_coupling:
+          <<: *base_risk_coupling
+          core_story:
+            rgd_route_score_requires_soft_recoverability: true
+            rgd_enable_corridor_gate: false
+            rgd_enable_budget_gate: false
+            rgd_enable_margin_gate: true
+            rgd_enable_heuristic_gate: false
+
+  rgd_corridor_only:
+    id: P8
+    paper_role: paper_baseline
+    publication_track: archive_only
+    theory_family: recoverability_ablation
+    alternative_explanation_axis: minimal_recoverability_dimension
+    ablation_dimension: corridor_only
+    mechanism_profile:
+      rgd_signal_provider: true
+    runtime_overrides:
+      protocol_name: rgd_corridor_only
+      slow_call_budget: 6
+      slow_call_cooldown_frames: 20
+      lane_change_cooldown: 2
+      slow_thinking:
+        executor: online_llm
+        risk_coupling:
+          <<: *base_risk_coupling
+          core_story:
+            rgd_route_score_requires_soft_recoverability: true
+            rgd_enable_corridor_gate: true
+            rgd_enable_budget_gate: false
+            rgd_enable_margin_gate: false
+            rgd_enable_heuristic_gate: false
+
+  rgd_budget_only:
+    id: P9
+    paper_role: paper_baseline
+    publication_track: archive_only
+    theory_family: recoverability_ablation
+    alternative_explanation_axis: minimal_recoverability_dimension
+    ablation_dimension: budget_only
+    mechanism_profile:
+      rgd_signal_provider: true
+    runtime_overrides:
+      protocol_name: rgd_budget_only
+      slow_call_budget: 6
+      slow_call_cooldown_frames: 20
+      lane_change_cooldown: 2
+      slow_thinking:
+        executor: online_llm
+        risk_coupling:
+          <<: *base_risk_coupling
+          core_story:
+            rgd_route_score_requires_soft_recoverability: true
+            rgd_enable_corridor_gate: false
+            rgd_enable_budget_gate: true
+            rgd_enable_margin_gate: false
+            rgd_enable_heuristic_gate: false
+
+  kinematic_risk_slow_path:
+    id: P10
+    paper_role: paper_baseline
+    publication_track: archive_only
+    theory_family: slow_executor_substitution
+    alternative_explanation_axis: router_not_executor_explains_gains
+    ablation_dimension: slow_executor_replaced_with_risk_planner
+    mechanism_profile:
+      rgd_signal_provider: true
+    runtime_overrides:
+      protocol_name: kinematic_risk_slow_path
+      slow_call_budget: 6
+      slow_call_cooldown_frames: 20
+      lane_change_cooldown: 2
+      slow_thinking:
+        executor: kinematic_risk
+        risk_coupling:
+          <<: *base_risk_coupling
+
+paper_baselines:
+  supported_groups: &supported_groups
+    - rgd_fixed_policy
+    - rgd_full_system
+    - always_fast
+    - always_slow
+    - random_budget
+    - uncertainty_budget
+    - risk_budget
+    - rule_safety_only
+    - rgd_margin_only
+    - rgd_corridor_only
+    - rgd_budget_only
+    - kinematic_risk_slow_path
+  main_text_groups:
+    - rgd_fixed_policy
+    - always_fast
+    - always_slow
+    - random_budget
+    - uncertainty_budget
+    - risk_budget
+  archive_only_groups:
+    - rgd_full_system
+    - rule_safety_only
+    - rgd_margin_only
+    - rgd_corridor_only
+    - rgd_budget_only
+    - kinematic_risk_slow_path
+  core_metrics:
+    - collision_rate
+    - success_rate
+    - budget_normalized_independent_high_risk_utility
+  secondary_metrics:
+    - avg_route_completion
+    - avg_episode_reward
+    - avg_driving_distance
+    - avg_speed_safety_qualified
+    - avg_speed_all_frames
+    - avg_speed_over_success
+    - avg_runtime_per_frame
+    - fragile_decision_rate
+  mechanism_metrics:
+    - outcome_grounded_corrective_set_fraction
+    - rgd_minus_ttc_delay_corrective_fraction
+    - fixed_query_delay_corrective_fraction
+    - slow_call_rate
+    - deliberative_slow_call_rate
+    - independent_selective_routing_gain
+    - collapse_missed_rate
+    - slow_utility_failure_rate
+    - route_action_preservation_rate
+    - safety_override_rate
+    - shield_override_rate
+  shared_comparison_metrics:
+    - avg_route_completion
+    - avg_episode_reward
+    - avg_driving_distance
+    - avg_speed_safety_qualified
+    - avg_speed_all_frames
+    - avg_speed_over_success
+    - avg_runtime_per_frame
+  performance_order: *supported_groups

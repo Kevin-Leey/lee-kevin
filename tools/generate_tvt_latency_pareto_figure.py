@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-OUT = Path("paper2/generated_figures/fig_allocator_latency_pareto.pdf")
+OUT = Path("results/exploratory_figures/fig_allocator_latency_pareto.pdf")
 N = 30
 POLICIES = ["RGD", "Fast-only", "Random", "TTC-risk", "Uncertainty"]
 ZERO = [7, 6, 8, 10, 9]

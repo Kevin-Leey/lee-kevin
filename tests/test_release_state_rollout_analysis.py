@@ -205,6 +205,30 @@ class CandidateStateSchemaTests(unittest.TestCase):
         self.assertAlmostEqual(event["recovery_headroom"], 0.64)
         self.assertEqual(event["corrective_set_nonempty"], 1)
 
+    def test_trajectory_step_is_json_safe_and_retains_control_state(self):
+        vehicle = types.SimpleNamespace(
+            position=(3.0, 4.0),
+            speed=12.0,
+            lane_index=("a", "b", 2),
+            action={"acceleration": -0.5},
+        )
+        env = types.SimpleNamespace(unwrapped=types.SimpleNamespace(vehicle=vehicle))
+
+        row = release_rollouts._trajectory_step(
+            env,
+            frame=8,
+            effective_action=4,
+            ttc=float("inf"),
+            collision=False,
+            terminal_cause="running",
+        )
+
+        self.assertEqual(row["frame"], 8)
+        self.assertEqual(row["lane_id"], 2)
+        self.assertEqual(row["effective_action"], 4)
+        self.assertIsNone(row["ttc_s"])
+        self.assertEqual(row["acceleration_mps2"], -0.5)
+
 
 class PairedFixedDelayBootstrapTests(unittest.TestCase):
     @staticmethod

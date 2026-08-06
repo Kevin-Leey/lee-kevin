@@ -203,7 +203,9 @@ database/
 
 figs/
 
+# Local experiment outputs, temporary files, and reference library
 results/
+tmp/
 memories/
 config.yaml
 paper/ref/

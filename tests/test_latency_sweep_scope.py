@@ -10,7 +10,6 @@ from tools.run_closed_loop_latency_sweep import (
     FORMAL_LATENCY_SWEEP_SCOPE,
     FORMAL_MECHANISM_TRACE_SCOPE,
     SMOKE_SCOPE,
-    _apply_latency_overrides,
     _is_formal_closed_loop_latency_sweep,
     _is_formal_evidence_acquisition,
     _is_formal_mechanism_trace_acquisition,
@@ -21,61 +20,17 @@ from tools.run_closed_loop_latency_sweep import (
 
 
 class LatencySweepScopeTests(unittest.TestCase):
-    def test_latency_override_preserves_release_arbitration_config(self):
-        release_cfg = {
-            "release_opportunity_revalidation": {
-                "enable": True,
-                "action_cost_alignment": {
-                    "enable": True,
-                    "cost_margin": 0.02,
-                },
-            }
-        }
-        cfg = {
-            "closed_loop_latency_replay": release_cfg,
-            "_paper_protocol_config": {
-                "runtime_config": {"closed_loop_latency_replay": release_cfg.copy()}
-            },
-        }
-        args = Namespace(
-            episodes=1,
-            simulation_duration=30,
-            policy_frequency=10,
-            simulation_frequency=10,
-            scope="smoke_only",
-        )
-        plan = {
-            "acquisition_protocol_hash": "acquisition-hash",
-            "schedule_hash": "schedule-hash",
-        }
-        schedule_entry = {
-            "setting_contract_hash": "setting-hash",
-            "seed_block_index": 0,
-            "latency_order_position": 0,
-        }
-
-        _apply_latency_overrides(cfg, args, 1.7, 5000, plan, schedule_entry)
-
-        for target in (cfg, cfg["_paper_protocol_config"]["runtime_config"]):
-            replay = target["closed_loop_latency_replay"]
-            self.assertTrue(replay["release_opportunity_revalidation"]["enable"])
-            self.assertTrue(
-                replay["release_opportunity_revalidation"]["action_cost_alignment"]["enable"]
-            )
-            self.assertEqual(replay["delay_steps"], 17)
-            self.assertEqual(replay["extra_latency_s"], 1.7)
-
     def test_auto_recognizes_formal_mechanism_trace_acquisition(self):
         args = parse_args(
             [
                 "--groups",
                 "always_fast",
                 "--latencies",
-                "1.7",
+                "0.0",
                 "--seed-start",
-                "160",
+                "6000",
                 "--seeds",
-                "30",
+                "20",
             ]
         )
         self.assertEqual(_scope_label(args), FORMAL_MECHANISM_TRACE_SCOPE)
@@ -85,7 +40,7 @@ class LatencySweepScopeTests(unittest.TestCase):
 
     def test_small_always_fast_probe_remains_smoke(self):
         args = parse_args(
-            ["--groups", "always_fast", "--latencies", "1.7", "--seed-start", "160", "--seeds", "2"]
+            ["--groups", "always_fast", "--latencies", "0.0", "--seed-start", "6000", "--seeds", "2"]
         )
         self.assertEqual(_scope_label(args), SMOKE_SCOPE)
         self.assertFalse(_is_formal_mechanism_trace_acquisition(args))
@@ -97,9 +52,11 @@ class LatencySweepScopeTests(unittest.TestCase):
                 "--groups",
                 "always_fast",
                 "--latencies",
-                "1.7",
+                "0.0",
+                "--seed-start",
+                "6000",
                 "--seeds",
-                "30",
+                "20",
                 "--policy-frequency",
                 "5",
             ]
@@ -132,7 +89,9 @@ class LatencySweepScopeTests(unittest.TestCase):
                         "--groups",
                         "always_fast",
                         "--latencies",
-                        "1.7",
+                        "0.0",
+                        "--seed-start",
+                        "6000",
                         "--seeds",
                         "1",
                         "--scope",
@@ -146,9 +105,11 @@ class LatencySweepScopeTests(unittest.TestCase):
                 "--groups",
                 "always_fast",
                 "--latencies",
-                "1.7",
+                "0.0",
+                "--seed-start",
+                "6000",
                 "--seeds",
-                "30",
+                "20",
                 "--scope",
                 SMOKE_SCOPE,
             ]
@@ -162,11 +123,11 @@ class LatencySweepScopeTests(unittest.TestCase):
                 "--groups",
                 "always_fast",
                 "--latencies",
-                "1.7",
+                "0.0",
                 "--seed-start",
-                "160",
+                "6000",
                 "--seeds",
-                "30",
+                "20",
             ]
         )
         with tempfile.TemporaryDirectory() as temp_dir:

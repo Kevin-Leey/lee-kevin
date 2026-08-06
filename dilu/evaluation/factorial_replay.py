@@ -43,6 +43,107 @@ class QueryAdmissionPolicy(Protocol):
         ...
 
 
+_COMPONENT_GATE_FIELDS: Tuple[Tuple[str, str], ...] = (
+    ("latency_survival", "latency_survival_pass"),
+    ("maneuver_breadth", "maneuver_breadth_pass"),
+    ("corrective_headroom", "corrective_headroom_pass"),
+    ("state_need", "state_need_pass"),
+)
+_NON_ABLATABLE_GATE_FIELDS: Tuple[str, ...] = (
+    "domain_contract_pass",
+    "executor_available_pass",
+    "latency_prediction_pass",
+    "absolute_feasibility_pass",
+)
+
+
+@dataclass(frozen=True)
+class ComponentAblationArm:
+    """One prespecified query-gate component removal for the v13 study."""
+
+    name: str
+    display_name: str
+    removed_components: Tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        allowed = {name for name, _ in _COMPONENT_GATE_FIELDS}
+        removed = tuple(str(item) for item in self.removed_components)
+        if not str(self.name or "") or not str(self.display_name or ""):
+            raise ValueError("component-ablation arm names must be nonempty")
+        if len(removed) != len(set(removed)) or not set(removed).issubset(allowed):
+            raise ValueError("component-ablation arm removes an unknown component")
+
+
+# The leave-one-out arms identify all four serial predicates. The H x N arm is
+# a prespecified interaction check because both predicates govern whether a
+# potentially corrective maneuver is worth escalating.
+COMPONENT_ABLATION_ARMS: Tuple[ComponentAblationArm, ...] = (
+    ComponentAblationArm("full", "Full RGD"),
+    ComponentAblationArm("without_l", "w/o L", ("latency_survival",)),
+    ComponentAblationArm("without_a", "w/o A", ("maneuver_breadth",)),
+    ComponentAblationArm("without_h", "w/o H", ("corrective_headroom",)),
+    ComponentAblationArm("without_n", "w/o N", ("state_need",)),
+    ComponentAblationArm(
+        "without_h_and_n",
+        "w/o H,N",
+        ("corrective_headroom", "state_need"),
+    ),
+)
+
+
+class ComponentAblationQueryPolicy:
+    """Remove only named serial predicates from a frozen query gate."""
+
+    def __init__(self, arm: ComponentAblationArm) -> None:
+        self.arm = arm
+
+    def decide(self, context: QueryAdmissionContext) -> QueryAdmissionDecision:
+        gate = context.query_metadata.get("recoverability_gate")
+        if not isinstance(gate, Mapping):
+            raise ValueError("component ablation requires recoverability-gate metadata")
+        values = dict(gate)
+        required = [
+            *_NON_ABLATABLE_GATE_FIELDS,
+            *(field for _, field in _COMPONENT_GATE_FIELDS),
+            "serial_gate_pass",
+        ]
+        missing = [field for field in required if not isinstance(values.get(field), bool)]
+        if missing:
+            raise ValueError(
+                "component ablation requires boolean gate fields: "
+                + ", ".join(sorted(missing))
+            )
+
+        non_ablatable_pass = all(bool(values[field]) for field in _NON_ABLATABLE_GATE_FIELDS)
+        component_passes = {
+            name: bool(values[field]) for name, field in _COMPONENT_GATE_FIELDS
+        }
+        retained_components = tuple(
+            name for name, _ in _COMPONENT_GATE_FIELDS if name not in self.arm.removed_components
+        )
+        admit = bool(
+            non_ablatable_pass
+            and all(component_passes[name] for name in retained_components)
+        )
+        full_equivalent = bool(admit == bool(values["serial_gate_pass"]))
+        if not self.arm.removed_components and not full_equivalent:
+            raise ValueError("full component-ablation arm diverges from the runtime serial gate")
+
+        audit: Dict[str, Any] = {
+            "component_ablation_policy": "serial_predicate_removal",
+            "component_ablation_arm": self.arm.name,
+            "component_ablation_removed_components": ";".join(self.arm.removed_components),
+            "component_ablation_non_ablatable_pass": bool(non_ablatable_pass),
+            "component_ablation_full_equivalent_to_serial_gate": bool(full_equivalent),
+        }
+        for name, passed in component_passes.items():
+            audit[f"component_ablation_{name}_pass"] = bool(passed)
+            audit[f"component_ablation_{name}_retained"] = bool(
+                name in retained_components
+            )
+        return QueryAdmissionDecision(admit=admit, audit=audit)
+
+
 FACTORIAL_ARMS: Tuple[FactorialArm, ...] = (
     FactorialArm("full", True, True),
     FactorialArm("query_only", True, False),
@@ -204,6 +305,7 @@ class ProposalReplayAgent:
         self.issued_count = 0
         self.gate_rejected_count = 0
         self.timeout_count = 0
+        self._diagnostic_watchdogs: Dict[str, int] = {}
 
     @property
     def fast_thinker(self):
@@ -224,6 +326,17 @@ class ProposalReplayAgent:
 
     def decide(self, state: Any) -> Tuple[int, str, Dict[str, Any]]:
         frame = int(self.frame)
+        # This counter is a local liveness diagnostic only.  The authoritative
+        # request terminal event is emitted by the closed-loop replay queue in
+        # runtime_support; no controller action is changed here.
+        due_request_ids = [
+            request_id
+            for request_id, due_frame in self._diagnostic_watchdogs.items()
+            if int(due_frame) <= frame
+        ]
+        for request_id in due_request_ids:
+            self._diagnostic_watchdogs.pop(request_id, None)
+        self.timeout_count += len(due_request_ids)
         fast_action, fast_response, raw_metadata = self.inner.decide(state)
         metadata = dict(raw_metadata or {})
         metadata.update(
@@ -273,9 +386,14 @@ class ProposalReplayAgent:
                 )
             gate_passed = bool(decision.admit)
             admission_audit = dict(decision.audit or {})
-            if any(not str(key).startswith("discrepancy_gate_") for key in admission_audit):
+            if any(
+                not str(key).startswith(
+                    ("discrepancy_gate_", "component_ablation_")
+                )
+                for key in admission_audit
+            ):
                 raise ValueError(
-                    "query admission audit keys must use discrepancy_gate_ prefix"
+                    "query admission audit keys must use an approved policy prefix"
                 )
         metadata.update(
             {
@@ -318,6 +436,7 @@ class ProposalReplayAgent:
         )
         record_external_request()
         self.issued_count += 1
+        self._diagnostic_watchdogs[proposal.request_id] = frame + 2
         metadata.update(
             {
                 "factorial_query_issued": True,
@@ -354,7 +473,6 @@ class ProposalReplayAgent:
             }
         )
         if proposal.outcome != "valid":
-            self.timeout_count += int(proposal.outcome == "timeout")
             metadata.update(
                 {
                     "system_used": "slow",
