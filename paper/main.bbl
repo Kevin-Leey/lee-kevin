@@ -64,7 +64,7 @@ R.~Xin \emph{et~al.}, ``{NetRoller}: Interfacing general and specialized models
   for end-to-end autonomous driving,'' \emph{IEEE Trans. Veh. Technol.},
   vol.~75, no.~5, pp. 7469--7482, 2026.
 
-\bibitem{hu2024fasionad}
+\bibitem{qian2024fasionad}
 \BIBentryALTinterwordspacing
 K.~Qian \emph{et~al.}, ``{FASIONAD}: Fast and slow fusion thinking systems for
   human-like autonomous driving with adaptive feedback,'' arXiv preprint
@@ -96,6 +96,11 @@ Y.~Chen, Z.-H. Ding, Z.~Wang, Y.~Wang, L.~Zhang, and S.~Liu, ``Asynchronous
 L.~Li, J.~Fang, J.~Xue, and C.~Lv, ``Vision--language model-enabled dual-system
   for autonomous driving in safety-critical transportation,'' \emph{IEEE Trans.
   Intell. Transp. Syst.}, pp. 1--12, 2026, early access.
+
+\bibitem{chen2022simplexdrive}
+S.~Chen, Y.~Sun, D.~Li, Q.~Wang, Q.~Hao, and J.~Sifakis, ``Runtime safety
+  assurance for learning-enabled control of autonomous driving vehicles,'' in
+  \emph{Proc. IEEE Int. Conf. Robot. Autom. (ICRA)}, 2022, pp. 8978--8984.
 
 \bibitem{chen2024drivingllms}
 L.~Chen \emph{et~al.}, ``Driving with {LLMs}: Fusing object-level vector
@@ -192,11 +197,6 @@ M.~Li, J.~Gao, L.~Zhao, and X.~Shen, ``Adaptive computing scheduling for
 T.~G. Molnar, A.~K. Kiss, A.~D. Ames, and G.~Orosz, ``Safety-critical control
   with input delay in dynamic environment,'' \emph{IEEE Trans. Control Syst.
   Technol.}, vol.~31, no.~4, pp. 1507--1520, 2023.
-
-\bibitem{chen2022simplexdrive}
-S.~Chen, Y.~Sun, D.~Li, Q.~Wang, Q.~Hao, and J.~Sifakis, ``Runtime safety
-  assurance for learning-enabled control of autonomous driving vehicles,'' in
-  \emph{Proc. IEEE Int. Conf. Robot. Autom. (ICRA)}, 2022, pp. 8978--8984.
 
 \bibitem{shalevshwartz2017rss}
 \BIBentryALTinterwordspacing
