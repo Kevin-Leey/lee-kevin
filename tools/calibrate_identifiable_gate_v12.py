@@ -37,9 +37,9 @@ if str(REPO_ROOT) not in sys.path:
 from dilu.driver_agent.reasoning.rgd_support import compute_temporal_survival  # noqa: E402
 
 
-LOCK_PATH = Path(__file__).with_name("identifiable_gate_v12_calibration_lock.json")
 GATE_SUPPORT_PATH = REPO_ROOT / "dilu" / "driver_agent" / "reasoning" / "rgd_support.py"
-DEFAULT_PROTOCOL_PATH = REPO_ROOT / "formal_protocol_v12.yaml"
+DEFAULT_PROTOCOL_PATH = REPO_ROOT / "formal_protocol.yaml"
+LOCK_PATH = DEFAULT_PROTOCOL_PATH
 TARGET_MANIFEST_SCHEMA = "identifiable_gate_v12_snapshot_targets_v2"
 LABEL_SOURCE = "matched_release_state_exact_action_rollout_v1"
 CANONICAL_ACTION_FAMILIES = {
@@ -379,8 +379,20 @@ class CalibrationSpec:
 
 
 def load_spec(path: Path = LOCK_PATH) -> CalibrationSpec:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    return CalibrationSpec.from_lock(payload)
+    source = Path(path)
+    if source.suffix.lower() in {".yaml", ".yml"}:
+        protocol = yaml.safe_load(source.read_text(encoding="utf-8-sig"))
+        _require(isinstance(protocol, Mapping), "formal protocol is not a mapping")
+        submission = dict(protocol.get("tvt_submission_contract", {}) or {})
+        calibration = dict(submission.get("v12_calibration", {}) or {})
+        payload = calibration.get("calibration_lock")
+        _require(
+            isinstance(payload, Mapping),
+            "formal protocol is missing v12 calibration_lock",
+        )
+    else:
+        payload = json.loads(source.read_text(encoding="utf-8-sig"))
+    return CalibrationSpec.from_lock(dict(payload))
 
 
 def validate_protocol_contract(path: Path, spec: CalibrationSpec) -> Dict[str, Any]:
@@ -391,7 +403,11 @@ def validate_protocol_contract(path: Path, spec: CalibrationSpec) -> Dict[str, A
     submission = dict(payload.get("tvt_submission_contract", {}) or {})
     calibration = dict(submission.get("v12_calibration", {}) or {})
     component = dict(submission.get("component_ablation", {}) or {})
-    _require(submission.get("rgd_method_version") == spec.method_version, "protocol method_version drift")
+    _require(
+        submission.get("query_gate_method_version", submission.get("rgd_method_version"))
+        == spec.method_version,
+        "protocol query-gate method_version drift",
+    )
 
     def expected_range(field: str, seeds: Sequence[int]) -> None:
         row = dict(calibration.get(field, {}) or {})

@@ -31,6 +31,58 @@ def _binary_label(value: Any) -> bool:
     raise ValueError("corrective_set_nonempty must be a binary label")
 
 
+def _mean(values: Iterable[float]) -> Optional[float]:
+    resolved = list(values)
+    return float(sum(resolved) / len(resolved)) if resolved else None
+
+
+def _frame_count(row: Mapping[str, Any]) -> int:
+    value = _finite(row.get("total_frames"))
+    if value is None or value < 0 or not value.is_integer():
+        return 0
+    return int(value)
+
+
+def _route_completion(row: Mapping[str, Any]) -> Optional[float]:
+    expected = _finite(row.get("expected_total_frames"))
+    if expected is not None and expected > 0.0:
+        return min(1.0, float(_frame_count(row)) / expected)
+    value = _finite(row.get("route_completion"))
+    return value if value is not None and 0.0 <= value <= 1.0 else None
+
+
+def _episode_total_reward(row: Mapping[str, Any]) -> float:
+    for key in ("episode_total_reward", "total_reward"):
+        value = _finite(row.get(key))
+        if value is not None:
+            return value
+    # Legacy recorder payloads stored only the per-frame mean in avg_reward.
+    per_frame = _finite(row.get("mean_reward_per_frame"))
+    if per_frame is None:
+        per_frame = _finite(row.get("avg_reward"))
+    return float((per_frame or 0.0) * _frame_count(row))
+
+
+def _success_completion(row: Mapping[str, Any]) -> bool:
+    mode = str(row.get("success_metric_mode", "") or "").strip().lower()
+    if mode == "completion_threshold":
+        threshold = _finite(row.get("success_completion_threshold"))
+        completion = _route_completion(row)
+        if (
+            threshold is not None
+            and 0.0 <= threshold <= 1.0
+            and completion is not None
+        ):
+            return bool(
+                not bool(row.get("collision", False)) and completion >= threshold
+            )
+    elif mode == "collision_free":
+        return bool(
+            not bool(row.get("collision", False)) and _frame_count(row) > 0
+        )
+    return bool(row.get("success_completion", False))
+
+
 class MetricsAggregator:
     """Collect per-episode recorder payloads and request-scoped event traces."""
 
@@ -157,21 +209,52 @@ class MetricsAggregator:
 
     def calculate_comprehensive_metrics(self) -> Dict[str, Any]:
         physical = self.physical_metrics_list
-        frame_count = sum(int(row.get("total_frames", 0) or 0) for row in physical)
+        frame_count = sum(_frame_count(row) for row in physical)
         collision_rate = (sum(bool(row.get("collision", False)) for row in physical) / len(physical)) if physical else 0.0
-        success_rate = (sum(bool(row.get("success_completion", False)) for row in physical) / len(physical)) if physical else 0.0
+        episode_successes = [_success_completion(row) for row in physical]
+        success_rate = (sum(episode_successes) / len(physical)) if physical else 0.0
         avg = lambda key: (sum(float(row.get(key, 0.0) or 0.0) for row in physical) / len(physical)) if physical else 0.0
+        route_completions = [_route_completion(row) for row in physical]
+        route_completion_available = bool(physical) and all(
+            value is not None for value in route_completions
+        )
+        avg_route_completion = (
+            _mean(value for value in route_completions if value is not None)
+            if route_completion_available
+            else (0.0 if not physical else None)
+        )
+        episode_rewards = [_episode_total_reward(row) for row in physical]
+        speed_weight = sum(
+            float(_finite(row.get("avg_speed")) or 0.0) * _frame_count(row)
+            for row in physical
+        )
+        successful_speeds = [
+            float(_finite(row.get("avg_speed")) or 0.0)
+            for row, success in zip(physical, episode_successes)
+            if success
+        ]
+        safety_qualified_speeds = [
+            float(_finite(row.get("avg_speed")) or 0.0)
+            if success
+            else 0.0
+            for row, success in zip(physical, episode_successes)
+        ]
         payload = {
             "experiment_name": self.experiment_name,
             "total_episodes": len(physical),
             "total_frames": frame_count,
             "collision_rate": collision_rate,
             "success_rate": success_rate,
-            "avg_speed_safety_qualified": avg("avg_speed"),
-            "avg_speed_all_frames": avg("avg_speed"),
-            "avg_episode_reward": avg("avg_reward"),
+            "avg_speed_safety_qualified": _mean(safety_qualified_speeds) or 0.0,
+            "avg_speed_all_frames": float(speed_weight / frame_count) if frame_count else 0.0,
+            "avg_speed_over_success": _mean(successful_speeds),
+            "avg_episode_reward": _mean(episode_rewards) or 0.0,
+            "avg_reward_per_frame": (
+                float(sum(episode_rewards) / frame_count) if frame_count else 0.0
+            ),
             "avg_driving_distance": avg("driving_distance"),
-            "avg_route_completion": success_rate,
+            "avg_route_completion": avg_route_completion,
+            "route_completion_available": route_completion_available,
             "avg_runtime_per_frame": 0.0,
         }
         payload.update(self._reasoning_story())

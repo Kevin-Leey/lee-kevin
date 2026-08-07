@@ -1,5 +1,6 @@
 import json
 import math
+from pathlib import Path
 
 import pytest
 
@@ -14,6 +15,16 @@ from dilu.evaluation.factorial_replay import (
     COMPONENT_ABLATION_ARMS,
     ComponentAblationQueryPolicy,
     QueryAdmissionContext,
+)
+from tools.run_main_table_runtime import load_formal_protocol
+from tools.run_v13_component_ablation import (
+    COMPONENT_ABLATION_DESIGN,
+    _validate_formal_component_preflight,
+    parse_args as parse_component_args,
+)
+from tools.verify_v13_component_ablation import (
+    ARMS as VERIFIER_ARMS,
+    _formal_component_contract,
 )
 
 
@@ -53,6 +64,47 @@ def _branch(
         ),
         "runtime_gate_action_universe": gate_domain,
     }
+
+
+def test_formal_six_arm_runner_and_verifier_share_calibrated_delay_contract(tmp_path):
+    args = parse_component_args(
+        ["--source-root", str(tmp_path / "source"), "--result-root", str(tmp_path)]
+    )
+    assert args.seed_start == 6000
+    assert args.seeds == 20
+    assert args.latency_profile == "fixed"
+    assert args.fixed_delay_steps == 17
+    assert args.predicted_latency_s == 1.7
+
+    protocol = load_formal_protocol(Path("formal_protocol.yaml"))
+    contract = _validate_formal_component_preflight(
+        protocol=protocol,
+        seeds=list(range(6000, 6020)),
+        latency_profile=args.latency_profile,
+        fixed_latency_steps=args.fixed_delay_steps,
+        predicted_latency_s=args.predicted_latency_s,
+    )
+    assert contract["design"] == COMPONENT_ABLATION_DESIGN
+    _, _, delay_steps, execution = _formal_component_contract(protocol)
+    assert delay_steps == 17
+    assert execution["expected_policy_steps"] == 300
+    assert [label for label, _ in VERIFIER_ARMS] == [
+        "Full RGD",
+        "w/o L",
+        "w/o A",
+        "w/o H",
+        "w/o N",
+        "w/o H,N",
+    ]
+
+    with pytest.raises(ValueError, match="seed cohort drift"):
+        _validate_formal_component_preflight(
+            protocol=protocol,
+            seeds=list(range(6001, 6021)),
+            latency_profile=args.latency_profile,
+            fixed_latency_steps=args.fixed_delay_steps,
+            predicted_latency_s=args.predicted_latency_s,
+        )
 
 
 def test_fixed_horizon_normalization_uses_common_denominator_after_termination():

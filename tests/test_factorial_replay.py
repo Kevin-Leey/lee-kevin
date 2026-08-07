@@ -7,6 +7,8 @@ import pytest
 from dilu.evaluation.factorial_replay import (
     FACTORIAL_ARMS,
     FACTORIAL_REPLAY_VERSION,
+    FAST_ONLY_ARM,
+    FORMAL_FACTORIAL_ARMS,
     FactorialArm,
     ProposalRecord,
     ProposalReplayAgent,
@@ -108,6 +110,30 @@ def test_factorial_arms_cover_the_query_release_truth_table_once():
         "neither": (False, False),
     }
     assert len(FACTORIAL_ARMS) == len(set(observed.values())) == 4
+
+
+def test_formal_design_adds_a_genuine_fast_only_control():
+    assert FORMAL_FACTORIAL_ARMS[:-1] == FACTORIAL_ARMS
+    assert FORMAL_FACTORIAL_ARMS[-1] == FAST_ONLY_ARM
+
+    proposal = _proposal()
+    agent = ProposalReplayAgent(
+        _FakeInnerAgent(gate_pass=True),
+        {proposal.source_frame: proposal},
+        arm=FAST_ONLY_ARM,
+        bank_sha256="bank-digest",
+    )
+
+    action, response, metadata = agent.decide(_FakeState("fast-only"))
+
+    assert action == 1
+    assert response == "fast:fast-only"
+    assert metadata["factorial_candidate_query"] is True
+    assert metadata["factorial_query_issued"] is False
+    assert metadata["factorial_query_rejection_reason"] == "fast_only_control"
+    assert agent.inner.external_request_count == 0
+    assert agent.candidate_count == agent.gate_rejected_count == 1
+    assert agent.issued_count == 0
 
 
 @pytest.mark.parametrize("arm_name", ("full", "query_only"))
@@ -482,7 +508,7 @@ def test_failed_proposal_terminates_asynchronously_without_a_release_snapshot(
     assert event["slow_request_failed"] is False
 
 
-def test_simultaneous_failed_responses_terminate_in_deterministic_due_order():
+def test_second_failed_response_is_not_issued_while_one_request_is_pending():
     cfg = {
         "policy_frequency": 10,
         "closed_loop_latency_replay": {
@@ -518,7 +544,11 @@ def test_simultaneous_failed_responses_terminate_in_deterministic_due_order():
         return meta
 
     issue(0, "request-z", "timeout", 2, 1)
-    issue(1, "request-a", "failure", 1, 2)
+    suppressed = issue(1, "request-a", "failure", 1, 2)
+    assert suppressed["closed_loop_latency_issuance_event"] is False
+    assert [item["request_id"] for item in episode["latency_replay_queue"]] == [
+        "request-z"
+    ]
 
     first_meta = {"system_used": "fast"}
     first_action = _apply_closed_loop_latency_replay(
@@ -532,23 +562,6 @@ def test_simultaneous_failed_responses_terminate_in_deterministic_due_order():
     assert first_action == 3
     assert first_meta["closed_loop_latency_request_id"] == "request-z"
     assert first_meta["closed_loop_latency_timeout_event"] is True
-    assert [item["request_id"] for item in episode["latency_replay_queue"]] == [
-        "request-a"
-    ]
-
-    second_meta = {"system_used": "fast"}
-    second_action = _apply_closed_loop_latency_replay(
-        frame=3,
-        action=4,
-        decision_meta=second_meta,
-        episode_state=episode,
-        cfg=cfg,
-    )
-    assert second_action == 4
-    assert second_meta["closed_loop_latency_request_id"] == "request-a"
-    assert second_meta["closed_loop_latency_failure_event"] is True
-    assert second_meta["closed_loop_latency_scheduled_steps"] == 1
-    assert second_meta["closed_loop_latency_realized_steps"] == 2
     assert episode["latency_replay_queue"] == []
 
 

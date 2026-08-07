@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+import yaml
 
 import tools.run_v12_branch_labels as branch_labels
 import tools.analyze_release_state_rollouts as release_rollouts
@@ -524,7 +525,7 @@ def test_source_provenance_rejects_runtime_code_drift(tmp_path):
         ).encode("utf-8")
     ).hexdigest()
     protocol_hash = "1" * 64
-    protocol_path = tmp_path / "formal_protocol_v12.yaml"
+    protocol_path = tmp_path / "formal_protocol.yaml"
     artifact_paths = {
         "reasoning": tmp_path / "reasoning.json",
         "physical": tmp_path / "physical.json",
@@ -696,20 +697,26 @@ def test_runner_source_contains_no_allocator_selection_dependency():
     assert "scheduled_frames" not in source
 
 
-def test_v12_protocol_contract_rejects_v11_and_unregistered_seed_blocks():
-    v12 = branch_labels.REPO_ROOT / "formal_protocol_v12.yaml"
-    v11 = branch_labels.REPO_ROOT / "formal_protocol.yaml"
+def test_v12_query_gate_contract_rejects_incompatible_and_unregistered_inputs(tmp_path):
+    protocol = branch_labels.REPO_ROOT / "formal_protocol.yaml"
 
     assert branch_labels._validate_v12_protocol(
-        v12,
+        protocol,
         seeds=list(range(2000, 2040)),
         horizon=20,
         gamma=0.99,
         epsilon=0.02,
     ) == "parameter_selection"
-    with pytest.raises(ValueError, match="protocol_version 12"):
+
+    incompatible = tmp_path / "formal_protocol.yaml"
+    payload = yaml.safe_load(protocol.read_text(encoding="utf-8"))
+    payload["tvt_submission_contract"]["query_gate_method_version"] = "support_breadth_v11"
+    incompatible.write_text(
+        yaml.safe_dump(payload, sort_keys=False), encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="query-gate method version"):
         branch_labels._validate_v12_protocol(
-            v11,
+            incompatible,
             seeds=list(range(2000, 2040)),
             horizon=20,
             gamma=0.99,
@@ -717,7 +724,7 @@ def test_v12_protocol_contract_rejects_v11_and_unregistered_seed_blocks():
         )
     with pytest.raises(ValueError, match="not a preregistered v12 cohort"):
         branch_labels._validate_v12_protocol(
-            v12,
+            protocol,
             seeds=[7],
             horizon=20,
             gamma=0.99,

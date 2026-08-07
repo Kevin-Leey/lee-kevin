@@ -798,7 +798,7 @@ def _verified_floor_overlay_for_bundle(
 def verify(
     bundle_or_manifest: Path,
     *,
-    protocol_path: Path = Path("formal_protocol_v12.yaml"),
+    protocol_path: Path,
     repo_root: Path = REPO_ROOT,
     floor_overlay_path: Optional[Path] = None,
     calibration_manifest_path: Optional[Path] = None,
@@ -963,8 +963,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--protocol",
         type=Path,
-        default=Path("formal_protocol_v12.yaml"),
-        help="Frozen v12 formal protocol",
+        required=True,
+        help="Historical v12 protocol snapshot associated with the result bundle",
     )
     parser.add_argument(
         "--floor-overlay",

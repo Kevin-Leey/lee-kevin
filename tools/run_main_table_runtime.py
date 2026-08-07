@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import dataclass
+import math
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -10,6 +12,114 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+@dataclass(frozen=True)
+class PolicyExecutionHorizon:
+    """Resolved wall-clock and policy-step limits for one highway-env cell."""
+
+    episode_duration_s: float
+    policy_frequency_hz: float
+    simulation_frequency_hz: float
+    expected_policy_steps: int
+
+    def as_manifest(self) -> dict[str, Any]:
+        return {
+            "episode_duration_s": _compact_number(self.episode_duration_s),
+            "policy_frequency_hz": _compact_number(self.policy_frequency_hz),
+            "simulation_frequency_hz": _compact_number(self.simulation_frequency_hz),
+            "expected_policy_steps": int(self.expected_policy_steps),
+        }
+
+
+def _compact_number(value: float) -> int | float:
+    numeric = float(value)
+    return int(numeric) if numeric.is_integer() else numeric
+
+
+def _positive_number(value: Any, field: str) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f"{field} must be a positive finite number")
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field} must be a positive finite number") from exc
+    if not math.isfinite(numeric) or numeric <= 0.0:
+        raise ValueError(f"{field} must be a positive finite number")
+    return numeric
+
+
+def resolve_policy_execution_horizon(
+    source: Mapping[str, Any],
+    *,
+    context: str = "execution horizon",
+) -> PolicyExecutionHorizon:
+    """Resolve seconds and frequencies into the policy-frame episode cap.
+
+    Runtime configurations use ``simulation_duration``/``policy_frequency``
+    while formal contracts use unit-bearing names. Both forms intentionally
+    resolve through this single parser.
+    """
+
+    duration = _positive_number(
+        source.get("episode_duration_s", source.get("simulation_duration")),
+        f"{context}.episode_duration_s",
+    )
+    policy_frequency = _positive_number(
+        source.get("policy_frequency_hz", source.get("policy_frequency")),
+        f"{context}.policy_frequency_hz",
+    )
+    simulation_frequency = _positive_number(
+        source.get(
+            "simulation_frequency_hz", source.get("simulation_frequency")
+        ),
+        f"{context}.simulation_frequency_hz",
+    )
+    if simulation_frequency < policy_frequency:
+        raise ValueError(
+            f"{context}: simulation frequency must not be below policy frequency"
+        )
+    expected_steps = max(1, int(math.ceil(duration * policy_frequency - 1e-12)))
+    declared_steps = source.get("expected_policy_steps")
+    if declared_steps is not None:
+        if isinstance(declared_steps, bool):
+            raise ValueError(f"{context}.expected_policy_steps must be an integer")
+        try:
+            parsed_steps = int(declared_steps)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"{context}.expected_policy_steps must be an integer"
+            ) from exc
+        if parsed_steps != declared_steps or parsed_steps != expected_steps:
+            raise ValueError(
+                f"{context}: expected_policy_steps does not equal duration x policy frequency"
+            )
+    return PolicyExecutionHorizon(
+        episode_duration_s=duration,
+        policy_frequency_hz=policy_frequency,
+        simulation_frequency_hz=simulation_frequency,
+        expected_policy_steps=expected_steps,
+    )
+
+
+def validate_policy_execution_horizon(
+    runtime_config: Mapping[str, Any],
+    formal_contract: Mapping[str, Any],
+    *,
+    context: str,
+) -> PolicyExecutionHorizon:
+    """Return the runtime horizon after exact comparison with the contract."""
+
+    actual = resolve_policy_execution_horizon(runtime_config, context=context)
+    expected = resolve_policy_execution_horizon(
+        formal_contract, context=f"{context}.formal_contract"
+    )
+    if actual != expected:
+        raise ValueError(
+            f"{context}: resolved execution horizon {actual.as_manifest()} "
+            f"differs from formal contract {expected.as_manifest()}"
+        )
+    return actual
 
 
 def _deep_merge(base: Mapping[str, Any], override: Mapping[str, Any]) -> dict[str, Any]:
@@ -139,9 +249,12 @@ def build_group_config(
 
 
 __all__ = [
+    "PolicyExecutionHorizon",
     "REPO_ROOT",
     "build_group_config",
     "iter_selected_groups",
     "load_formal_base_config",
     "load_formal_protocol",
+    "resolve_policy_execution_horizon",
+    "validate_policy_execution_horizon",
 ]

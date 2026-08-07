@@ -136,6 +136,10 @@ def _resolve_llm_backend_snapshot(cfg: Mapping[str, Any]) -> Dict[str, Any]:
 def _build_runtime_experiment_config(cfg: Mapping[str, Any]) -> Dict[str, Any]:
     """Return a serializable public configuration without credentials."""
     config = dict(_public_value(dict(cfg or {})))
+    # Frame extraction writes the latest observation into the shared runtime
+    # mapping.  It is transient policy input, not part of the experiment
+    # configuration or its identity hash.
+    config.pop("_current_runtime_state", None)
     # The runtime uses private names internally.  Publish stable aliases so
     # independent acceptance tools never need to infer an implementation key.
     if isinstance(config.get("_rgd_runtime_contract"), Mapping):

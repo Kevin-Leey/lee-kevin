@@ -1,9 +1,22 @@
 import json
+import subprocess
+import sys
 
 from tools.analyze_v13_actual_interventions import (
     _prefix_execution_requested_action,
     summarize_release_branches,
 )
+
+
+def test_actual_intervention_analyzer_supports_direct_cli_help():
+    completed = subprocess.run(
+        [sys.executable, "tools/analyze_v13_actual_interventions.py", "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "--bundle" in completed.stdout
 
 
 def _branch(raw_action, effective_action, utility, *, target_speed=20.0, collision=0):

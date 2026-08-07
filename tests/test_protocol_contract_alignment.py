@@ -45,9 +45,9 @@ class ProtocolContractAlignmentTests(unittest.TestCase):
 
     def test_retry_contract_matches_runtime_configuration(self):
         retry = self.submission["table_vii"]["llm_retry"]
-        self.assertEqual(self.config["LLM_MAX_ATTEMPTS"], 3)
-        self.assertEqual(self.runtime["LLM_MAX_ATTEMPTS"], 3)
-        self.assertEqual(retry["max_attempts_including_initial_request"], 3)
+        self.assertEqual(self.config["LLM_MAX_ATTEMPTS"], 1)
+        self.assertEqual(self.runtime["LLM_MAX_ATTEMPTS"], 1)
+        self.assertEqual(retry["max_attempts_including_initial_request"], 1)
         self.assertEqual(self.config["LLM_RETRY_BACKOFF_S"], 0.5)
         self.assertEqual(self.runtime["LLM_RETRY_BACKOFF_S"], 0.5)
         self.assertEqual(retry["initial_backoff_s"], 0.5)
@@ -77,6 +77,50 @@ class ProtocolContractAlignmentTests(unittest.TestCase):
     def test_submission_contract_has_no_anonymous_artifact_field(self):
         self.assertNotIn("anonymous_artifact", self.submission)
         self.assertFalse(any("tvt_anonymized_artifact" in str(value) for value in self.submission.values()))
+
+    def test_v13_execution_and_mechanism_source_contracts_are_explicit(self):
+        expected = {
+            "environment": "highway-v0",
+            "episode_duration_s": 30,
+            "policy_frequency_hz": 10,
+            "simulation_frequency_hz": 10,
+            "expected_policy_steps": 300,
+        }
+        self.assertEqual(self.submission["formal_execution_contract"], expected)
+        self.assertEqual(
+            self.submission["mechanism_source_groups"],
+            ["always_fast", "always_slow"],
+        )
+        self.assertEqual(
+            self.submission["mechanism_source_execution_contract"], expected
+        )
+
+    def test_five_and_six_arm_contracts_are_seed_and_horizon_bound(self):
+        five = self.submission["query_release_factorial"]
+        self.assertEqual(
+            five["arms"],
+            ["full", "query_only", "release_only", "neither", "fast_only"],
+        )
+        self.assertEqual(five["seed_range"], {"start": 5000, "end": 5029, "count": 30})
+        self.assertEqual(five["execution_contract"]["expected_policy_steps"], 300)
+
+        six = self.submission["component_ablation"]
+        self.assertEqual(
+            six["arms"],
+            [
+                "full",
+                "without_l",
+                "without_a",
+                "without_h",
+                "without_n",
+                "without_h_and_n",
+            ],
+        )
+        self.assertEqual(six["seed_range"], {"start": 6000, "end": 6019, "count": 20})
+        self.assertEqual(six["latency_profile"], "fixed")
+        self.assertEqual(six["fixed_delay_steps"], 17)
+        self.assertEqual(six["predicted_latency_s"], 1.7)
+        self.assertEqual(six["execution_contract"]["expected_policy_steps"], 300)
 
 
 if __name__ == "__main__":

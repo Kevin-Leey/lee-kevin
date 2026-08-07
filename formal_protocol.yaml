@@ -35,6 +35,23 @@ tvt_submission_contract:
   earlier_paper_result_method_version: raw_affordance_v10
   main_delay_s: 0.0
   main_delay_steps: 0
+  formal_execution_contract: &v13_highway_execution
+    environment: highway-v0
+    episode_duration_s: 30
+    policy_frequency_hz: 10
+    simulation_frequency_hz: 10
+    expected_policy_steps: 300
+  slow_service_calibration:
+    provider: siliconflow
+    model: Qwen/Qwen3-8B
+    calibration_date: 2026-08-07
+    request_count: 5
+    wall_latency_s: [1.207, 1.684, 1.572, 1.360, 1.790]
+    median_wall_latency_s: 1.572
+    locked_gate_prediction_s: 1.7
+    selection_rule: nearest_conservative_predeclared_latency_stratum
+  mechanism_source_groups: [always_fast, always_slow]
+  mechanism_source_execution_contract: *v13_highway_execution
   fixed_query_delays_s: [0.7, 1.7, 2.7]
   ttc_delay_threshold: 0.208
   release_rollout:
@@ -48,12 +65,45 @@ tvt_submission_contract:
     branch_continuation: complete_fast_policy
     bootstrap_unit: simulator_seed
     bootstrap_draws: 20000
+  query_release_factorial:
+    artifact: results/highway_result/formal_run/query_release_factorial
+    analysis_artifact: results/highway_result/formal_run/query_release_factorial_analysis
+    design: matched_five_arm_query_release_with_fast_only
+    arms: [full, query_only, release_only, neither, fast_only]
+    seed_contract: main_seeds
+    seed_range: {start: 5000, end: 5029, count: 30}
+    environment: highway-v0
+    episodes_per_cell: 1
+    proposal_source_group: always_slow
+    candidate_source_policy: scheduled_always_slow
+    latency_profile: frozen
+    fixed_delay_steps: null
+    execution_contract: *v13_highway_execution
+    randomized_block_order: true
+    bootstrap_unit: simulator_seed
+    bootstrap_draws: 20000
+    bootstrap_seed: 20260807
+    inference:
+      design: paired_within_simulator_seed
+      binary_test: exact_mcnemar
+      continuous_test: paired_sign_flip
+      confidence_interval: paired_seed_bootstrap_95_percent
+      primary_family: full_minus_fast_only_across_prespecified_metrics
+      multiplicity: holm
   component_ablation:
-    artifact: null
-    design: matched_four_arm_leave_one_component_out
-    components: [latency_survival, relative_support_maneuver_breadth, corrective_recovery_headroom]
+    artifact: results/highway_result/formal_run/component_ablation
+    analysis_artifact: results/highway_result/formal_run/component_ablation_analysis
+    design: matched_six_arm_lahn_leave_one_out_with_hxn_interaction
+    arms: [full, without_l, without_a, without_h, without_n, without_h_and_n]
+    components: [latency_survival, relative_support_maneuver_breadth, corrective_recovery_headroom, state_need]
     seed_range: {start: 6000, end: 6019, count: 20}
-    delay_s: [0.0]
+    proposal_source_group: always_slow
+    candidate_source_policy: scheduled_always_slow
+    latency_profile: fixed
+    fixed_delay_steps: 17
+    predicted_latency_s: 1.7
+    delay_s: [1.7]
+    execution_contract: *v13_highway_execution
     horizon_steps: 20
     gamma: 0.99
     corrective_margin: 0.02
@@ -83,7 +133,15 @@ tvt_submission_contract:
     bootstrap_unit: simulator_seed
     bootstrap_draws: 20000
     bootstrap_seed: 20260721
+    inference:
+      design: paired_within_simulator_seed
+      confidence_interval: paired_seed_cluster_bootstrap_95_percent
+      episode_estimand: arm_mean_and_full_minus_ablation_paired_difference
+      release_estimand: descriptive_outcome_grounded_corrective_fraction
+      interaction_estimand: full_minus_without_h_minus_without_n_plus_without_h_and_n
+      query_events_nested_within_seed: true
     paper_acceptance:
+      corrective_yield_noninferiority_margin_per_seed: -0.10
       descriptive_mechanism_analysis_only: true
       matched_release_states_required: true
       seed_cluster_confidence_intervals_required: true
@@ -113,6 +171,86 @@ tvt_submission_contract:
     validation_policy: go_no_go_and_holdout_use_the_single_locked_parameter_tuple_without_search
     holdout_open_count: 0
     holdout_recalibration_policy: forbidden
+    calibration_lock:
+      artifact_role: calibration_lock
+      lock_id: identifiable-gate-v12-calibration-20260720
+      method_version: identifiable_gate_v12
+      seed_block: {start: 2000, end: 2039, count: 40}
+      go_no_go_seed_block: {start: 2040, end: 2059, count: 20}
+      validation_seed_block: {start: 3000, end: 3029, count: 30}
+      forbidden_seed_ranges:
+        - [30, 59]
+        - [60, 66]
+        - [100, 189]
+        - [1000, 1029]
+      delay_strata_s: [0.7, 1.7, 2.7]
+      policy_frequency_hz: 10.0
+      horizon_steps: 20
+      gamma: 0.99
+      corrective_margin: 0.02
+      viable_cost_threshold: 0.55
+      corrective_headroom_kappa: 0.55
+      corrective_headroom_kappa_source: recoverable_cost_threshold
+      latency_contract:
+        policy_frequency_hz: 10.0
+        safety_reserve_seconds: 0.0
+        llm_backed_execution_available: true
+      need_formula: max(need_state_hazard,need_pre_screen_hazard)
+      budget_per_seed_delay: 6
+      cooldown_complete_frames: 20
+      minimum_query_frame_gap: 21
+      lambda_grid:
+        L: {start: 0.05, stop: 0.90, step: 0.05}
+        A: {start: 0.05, stop: 0.90, step: 0.05}
+        H: {start: 0.05, stop: 0.90, step: 0.05}
+        I: {fixed: 0.20, outcome_tuned: false}
+      full_scheduled_exposure_per_delay:
+        minimum: 120
+        maximum: 200
+        inclusive: true
+      locked_partition_exposure_per_delay:
+        go_no_go: {minimum: 60, maximum: 100}
+        validation: {minimum: 90, maximum: 150}
+      identifiability_constraints:
+        minimum_leave_one_out_changed_opportunities: 30
+        minimum_leave_one_out_changed_seeds: 10
+        minimum_changed_fraction_of_union: 0.10
+        maximum_pairwise_changed_set_jaccard: 0.90
+        minimum_observed_levels_per_component: 5
+        minimum_q90_minus_q10: 0.20
+      selection_objective:
+        - maximize_minimum_full_minus_leave_one_out_pooled_cset_margin
+        - minimize_full_scheduled_queries_per_corrective_release
+        - maximize_lambda_L_then_lambda_A_then_lambda_H_then_lambda_I
+      cset_estimand: pooled_corrective_releases_over_evaluated_releases_across_three_delays
+      inference_cluster_unit: simulator_seed
+      validation:
+        design: locked_full_2x2x2_factorial
+        arms: [full, w/o L, w/o A, w/o H, L only, A only, H only, F+I only]
+        bootstrap_draws: 20000
+        bootstrap_seed: 20260720
+        one_sided_confidence: 0.95
+        simultaneous_cset_comparators: [w/o L, w/o A, w/o H]
+        corrective_yield_noninferiority_margin_per_seed: -0.10
+        point_acceptance:
+          - full_pooled_cset_strictly_greater_than_all_seven_arms
+          - full_Q_over_C_strictly_less_than_all_seven_arms
+        interval_acceptance:
+          - simultaneous_one_sided_95pct_lower_bound_for_three_leave_one_out_cset_margins_gt_0
+          - each_leave_one_out_paired_corrective_yield_lower_bound_gt_minus_0p10_per_seed
+      protocol_file: formal_protocol.yaml
+      q_over_c_definition: all_scheduled_queries_including_boundary_exclusions_over_evaluated_corrective_releases
+      permanent_gate: F_exact_domain_and_absolute_alternative_feasibility
+      leave_one_out_arms: [w/o L, w/o A, w/o H]
+      component_sources:
+        L: canonical_temporal_survival_from_complete_latency_snapshot
+        A: relative_support_weighted_maneuver_family_breadth
+        H: incumbent_relative_action_recovery_cost_margin
+        I: state_hazard_and_pre_screen_only
+      support_breadth_temperature: 0.10
+      support_breadth_temperature_source: identifiable_gate_v12.fixed_T_A
+      support_breadth_formula: family_min_support_cost_relative_to_best_exponential_mass_over_all_alternative_families
+      support_breadth_trace_formula: sum_exp(-(s_m-s_star)/T_A)/num_all_alternative_families
   evidence_artifacts:
     compatibility:
       required_method_version: action_aligned_release_gate_v13
@@ -124,10 +262,12 @@ tvt_submission_contract:
     artifacts:
       main_results:
         paper_facing: true
-        status: locked_pending_v13_main_execution
+        status: locked_for_v13_main_execution
         method_version: action_aligned_release_gate_v13
-        artifact: null
-        manifest: null
+        artifact: results/highway_result/formal_run/main
+        manifest: result_bundle_manifest.json
+        analysis_artifact: results/highway_result/formal_run/main_analysis
+        analysis_manifest: main_results_manifest.json
         data_files: [main_results.csv]
         seed_contract: main_seeds
         required_groups:
@@ -140,17 +280,62 @@ tvt_submission_contract:
         environment: highway-v0
         episodes_per_key: 1
         zero_query_allowed_groups: [always_fast]
-        technical_slow_failure_policy: reject_any_scheduled_slow_failure_or_fallback
-      transfer_results:
+        technical_slow_failure_policy: report_explicit_timeout_failure_and_fast_fallback
+        execution_contract: *v13_highway_execution
+        inference:
+          experimental_unit: simulator_seed
+          design: paired_complete_seed_blocks
+          confidence_interval: paired_seed_bootstrap_95_percent
+          bootstrap_draws: 20000
+          bootstrap_seed: 20260807
+          binary_test: exact_mcnemar
+          continuous_test: paired_sign_flip
+          multiplicity: holm_within_endpoint_across_five_prespecified_rgd_baseline_contrasts
+          primary_endpoints: [success_rate, collision_rate, route_completion]
+          resource_endpoints: [request_count, algorithm_runtime_ms_per_frame]
+          secondary_endpoints:
+            - episode_reward
+            - driving_distance_m
+            - safety_qualified_speed_mps
+            - all_frame_speed_mps
+          mechanism_endpoints:
+            - valid_response_count
+            - release_count
+            - authorized_release_count
+            - distinct_actuation_count
+      query_release_factorial:
         paper_facing: true
-        status: pending_v13_generalization
+        status: locked_for_v13_main_execution
+        method_version: action_aligned_release_gate_v13
+        artifact: results/highway_result/formal_run/query_release_factorial
+        analysis_artifact: results/highway_result/formal_run/query_release_factorial_analysis
+        manifest: factorial_run_manifest.json
+        data_files:
+          - factorial_episode_results.csv
+          - proposal_bank_manifest.json
+        seed_contract: main_seeds
+        required_manifest_values:
+          method_version: action_aligned_release_gate_v13
+          query_gate_method_version: identifiable_gate_v12
+          release_contract_version: action_cost_alignment_v2
+          factorial_design: five_arm
+          latency_profile: frozen
+          candidate_source_policy: scheduled_always_slow
+          candidate_source_gate_independent: true
+          episode_duration_s: 30
+          policy_frequency_hz: 10
+          simulation_frequency_hz: 10
+          expected_policy_steps: 300
+      transfer_results:
+        paper_facing: false
+        status: auxiliary_legacy_transfer_not_used_for_v13_core_claims
         method_version: action_aligned_release_gate_v13
         artifact: null
         manifest: null
         data_files: [lane_density_episode_metrics.csv]
       release_rollout:
-        paper_facing: true
-        status: pending_v13_mechanism_evaluation
+        paper_facing: false
+        status: superseded_by_v13_five_arm_and_component_evidence
         method_version: action_aligned_release_gate_v13
         artifact: null
         manifest: null
@@ -161,6 +346,8 @@ tvt_submission_contract:
         summary_file: release_rollout_summary.csv
         summary_manifest_key: summary
         seed_contract: mechanism_evaluation_seeds
+        source_groups: [always_fast]
+        source_execution_contract: *v13_highway_execution
         required_manifest_values:
           method_version: action_aligned_release_gate_v13
           query_gate_method_version: identifiable_gate_v12
@@ -176,10 +363,11 @@ tvt_submission_contract:
           ttc_delay_threshold: 0.208
       component_ablation:
         paper_facing: true
-        status: pending_v13_mechanism_evaluation
+        status: locked_for_v13_mechanism_execution
         method_version: action_aligned_release_gate_v13
-        artifact: null
-        manifest: null
+        artifact: results/highway_result/formal_run/component_ablation_analysis
+        raw_artifact: results/highway_result/formal_run/component_ablation
+        manifest: component_ablation_analysis_manifest.json
         data_files:
           - component_ablation_summary.csv
           - component_ablation_events.csv
@@ -188,6 +376,8 @@ tvt_submission_contract:
         summary_file: component_ablation_summary.csv
         summary_manifest_key: summary
         seed_contract: mechanism_evaluation_seeds
+        source_groups: [always_slow]
+        source_execution_contract: *v13_highway_execution
         required_manifest_values:
           method_version: action_aligned_release_gate_v13
           query_gate_method_version: identifiable_gate_v12
@@ -195,13 +385,21 @@ tvt_submission_contract:
           legal_action_provenance: exact
           seed_is_experimental_unit: true
           query_events_nested_within_seed: true
-          design: matched four-arm leave-one-component-out
+          design: matched_six_arm_lahn_leave_one_out_with_hxn_interaction
+          arms: [full, without_l, without_a, without_h, without_n, without_h_and_n]
           alternative_metric_source: relative_support_weighted_maneuver_family_breadth
           headroom_metric_source: incumbent_relative_action_recovery_cost_margin
           need_metric_source: state_hazard_and_pre_screen_only
           absolute_alternative_feasibility_non_ablatable: true
           viable_cost_threshold: 0.55
-          delay_s: [0.0]
+          delay_s: [1.7]
+          latency_profile: fixed
+          fixed_latency_steps: 17
+          predicted_latency_s: 1.7
+          episode_duration_s: 30
+          policy_frequency_hz: 10
+          simulation_frequency_hz: 10
+          expected_policy_steps: 300
           horizon_steps: 20
           gamma: 0.99
           epsilon: 0.02
@@ -214,8 +412,8 @@ tvt_submission_contract:
           cooldown_minimum_query_frame_gap: 21
           bootstrap_draws: 20000
       executor_diagnostics:
-        paper_facing: true
-        status: pending_v13_main_execution
+        paper_facing: false
+        status: auxiliary_backend_diagnostics_not_used_for_v13_core_claims
         method_version: action_aligned_release_gate_v13
         artifact: null
         manifest: null
@@ -251,7 +449,7 @@ tvt_submission_contract:
     comparison_rule: "retain all six lane-density cells; select no cell or metric after observing outcomes"
     risk_calibration_enabled: false
     llm_retry:
-      max_attempts_including_initial_request: 3
+      max_attempts_including_initial_request: 1
       initial_backoff_s: 0.5
       schedule: exponential
       retryable_http_statuses: [408, 409, 425, 429, 500, 502, 503, 504]
@@ -384,6 +582,10 @@ runtime_config:
   rgd_release_contract_version: action_cost_alignment_v2
   hidden_slower_bridge:
     enable: true
+  asynchronous_slow_path:
+    enable: true
+    min_release_frames: 1
+    latest_source_frame: 210
   closed_loop_latency_replay:
     enable: false
     extra_latency_s: 0.0
@@ -392,14 +594,14 @@ runtime_config:
       - slow
   safety_stack_mode: unified_arbitration
   success_metric_mode: completion_threshold
-  QWEN_REQUEST_TIMEOUT_S: 120.0
-  LLM_MAX_ATTEMPTS: 3
+  QWEN_REQUEST_TIMEOUT_S: 8.0
+  LLM_MAX_ATTEMPTS: 1
   LLM_RETRY_BACKOFF_S: 0.5
   slow_call_budget: 6
   slow_call_cooldown_frames: 20
   rgd_min_observation_frames: 1
-  rgd_predicted_slow_latency_s: 0.0
-  rgd_predicted_slow_latency_source: locked_to_closed_loop_latency_replay
+  rgd_predicted_slow_latency_s: 1.7
+  rgd_predicted_slow_latency_source: siliconflow_qwen3_8b_median_calibration_20260807
   rgd_latency_safety_reserve_s: 0.0
   rgd_decision_threshold: 0.0
   rgd_decision_threshold_source: legacy_field_ignored_by_identifiable_gate_v12

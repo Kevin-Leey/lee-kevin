@@ -1031,11 +1031,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     export.add_argument("--branch-dir", type=Path, required=True)
     export.add_argument("--trace-root", type=Path, required=True)
     export.add_argument("--output-root", type=Path, required=True)
-    export.add_argument("--protocol", type=Path, default=REPO_ROOT / "formal_protocol_v12.yaml")
+    export.add_argument("--protocol", type=Path, default=REPO_ROOT / "formal_protocol.yaml")
     export.add_argument("--lock", type=Path, default=LOCK_PATH)
     verify = subparsers.add_parser("verify")
     verify.add_argument("--artifact", type=Path, required=True)
-    verify.add_argument("--protocol", type=Path, default=REPO_ROOT / "formal_protocol_v12.yaml")
+    verify.add_argument("--protocol", type=Path, default=REPO_ROOT / "formal_protocol.yaml")
     return parser.parse_args(argv)
 
 

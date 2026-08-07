@@ -39,14 +39,45 @@ def _write_json(path: Path, payload) -> None:
 
 
 def _protocol_copy(path: Path) -> Path:
-    payload = yaml.safe_load((REPO_ROOT / "formal_protocol_v12.yaml").read_text(encoding="utf-8"))
+    payload = yaml.safe_load(
+        (REPO_ROOT / "formal_protocol.yaml").read_text(encoding="utf-8")
+    )
+    payload["protocol_name"] = "rgd_tvt_identifiable_gate_v12"
+    payload["protocol_version"] = 12
+    submission = payload["tvt_submission_contract"]
+    submission["development_seeds"] = "4000-4029"
+    submission["main_seeds"] = "4000-4029"
+    submission["rgd_method_version"] = METHOD_VERSION
+    submission["mechanism_evaluation_method_version"] = METHOD_VERSION
+    submission["mechanism_evaluation_compatibility"] = (
+        "identifiable_gate_v12_native_contract"
+    )
+    main = submission["evidence_artifacts"]["artifacts"]["main_results"]
+    main["method_version"] = METHOD_VERSION
+    main["technical_slow_failure_policy"] = (
+        "reject_any_scheduled_slow_failure_or_fallback"
+    )
+    runtime = payload["runtime_config"]
+    runtime["protocol_name"] = "rgd_tvt_identifiable_gate_v12"
+    runtime["rgd_system_method_version"] = METHOD_VERSION
+    runtime["rgd_query_gate_method_version"] = METHOD_VERSION
+    core = runtime["slow_thinking"]["risk_coupling"]["core_story"]
+    core.update(
+        {
+            "rgd_latency_survival_floor": 0.20,
+            "rgd_maneuver_breadth_floor": 0.20,
+            "rgd_corrective_headroom_floor": 0.20,
+            "rgd_state_need_floor": 0.20,
+            "v12_floor_status": "calibration_placeholder_not_for_deployment",
+        }
+    )
     path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     return path
 
 
-def test_repository_protocol_declares_frozen_six_arm_main_contract():
+def test_repository_protocol_declares_current_main_and_embedded_query_gate_contracts():
     payload = yaml.safe_load(
-        (REPO_ROOT / "formal_protocol_v12.yaml").read_text(encoding="utf-8")
+        (REPO_ROOT / "formal_protocol.yaml").read_text(encoding="utf-8")
     )
     main = payload["tvt_submission_contract"]["evidence_artifacts"]["artifacts"][
         "main_results"
@@ -57,8 +88,14 @@ def test_repository_protocol_declares_frozen_six_arm_main_contract():
     assert main["zero_query_allowed_groups"] == ["always_fast"]
     assert (
         main["technical_slow_failure_policy"]
-        == "reject_any_scheduled_slow_failure_or_fallback"
+        == "report_explicit_timeout_failure_and_fast_fallback"
     )
+    lock = payload["tvt_submission_contract"]["v12_calibration"][
+        "calibration_lock"
+    ]
+    assert lock["method_version"] == METHOD_VERSION
+    assert lock["protocol_file"] == "formal_protocol.yaml"
+    assert lock["seed_block"] == {"start": 2000, "end": 2039, "count": 40}
     always_slow = payload["groups"]["always_slow"]
     assert always_slow["publication_track"] == "main_text"
     assert always_slow["runtime_overrides"]["slow_call_budget"] == 6
@@ -70,7 +107,7 @@ def test_repository_protocol_declares_frozen_six_arm_main_contract():
 def _fake_floor_overlay(root: Path):
     overlay_path = root / "inputs" / "floor_overlay.json"
     calibration_path = root / "inputs" / "calibration_manifest.json"
-    protocol_path = root / "inputs" / "formal_protocol_v12.yaml"
+    protocol_path = root / "inputs" / "formal_protocol.yaml"
     lock_path = root / "inputs" / "calibration_lock.json"
     _write_json(overlay_path, {})
     _write_json(calibration_path, {})
@@ -160,7 +197,7 @@ def _row_metrics(arm: str, *, slow: bool):
 
 
 def _build_bundle(tmp_path: Path, monkeypatch, *, zero_query_arm=None):
-    protocol_path = _protocol_copy(tmp_path / "formal_protocol_v12_test.yaml")
+    protocol_path = _protocol_copy(tmp_path / "formal_protocol_historical_test.yaml")
     protocol = load_formal_protocol(protocol_path)
     fake_overlay = _fake_floor_overlay(tmp_path)
     base_cfg = load_formal_base_config(protocol, REPO_ROOT / "config.yaml")

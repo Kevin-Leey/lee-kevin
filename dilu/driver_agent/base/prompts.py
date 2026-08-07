@@ -22,11 +22,11 @@ class PromptManager:
         "slow_decision": PromptTemplate(
             name="slow_decision",
             template=(
-                "You are a driving decision module. Assess the current observation "
-                "and select one available action. Return JSON only with final_action, "
-                "confidence, and reason_lines.\n\n"
-                "Observation:\n{observation}\n\n"
-                "Available actions: {available_actions}"
+                "Select one available driving action. Output exactly one compact JSON "
+                "object using this schema: "
+                '{{"final_action":1,"confidence":0.9,"reason_lines":["short reason"]}}. '
+                "The final_action must be one of {available_actions}. Use one reason "
+                "of at most eight words.\nObservation: {observation}"
             ),
         )
     }

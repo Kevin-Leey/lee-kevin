@@ -32,7 +32,7 @@ from dilu.evaluation.reporter import build_experiment_identity
 
 def _write_calibration_manifest(path: Path) -> dict:
     spec = calibration.load_spec(DEFAULT_LOCK_PATH)
-    threshold = calibration.Thresholds(15, 25, 35, 20)
+    threshold = calibration.Thresholds(5, 55, 10, 20)
     selected = {"candidate_id": threshold.candidate_id, **threshold.as_floats()}
     source = {
         "lock_sha256": calibration._sha256(DEFAULT_LOCK_PATH),
@@ -110,9 +110,9 @@ def test_verified_overlay_applies_exact_tuple_and_runtime_provenance(overlay_bun
     assert verified.calibration_manifest_path == calibration_path.resolve()
     assert verified.selection_digest == manifest["selection_digest"]
     assert verified.floors == {
-        "rgd_latency_survival_floor": 0.15,
-        "rgd_maneuver_breadth_floor": 0.25,
-        "rgd_corrective_headroom_floor": 0.35,
+        "rgd_latency_survival_floor": 0.05,
+        "rgd_maneuver_breadth_floor": 0.55,
+        "rgd_corrective_headroom_floor": 0.10,
         "rgd_state_need_floor": 0.20,
     }
 
@@ -220,7 +220,7 @@ def test_overlay_rejects_semantic_tampering_after_attacker_rehashes_payload(over
             lambda cfg: cfg["slow_thinking"]["risk_coupling"]["core_story"].update(
                 {"v12_floor_status": "edited"}
             ),
-            "untouched v12 floor placeholder status",
+            "registered v12 floor status",
         ),
     ],
 )

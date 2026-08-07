@@ -33,9 +33,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CALIBRATION_TOOL_PATH = Path(__file__).with_name(
     "calibrate_identifiable_gate_v12.py"
 )
-CALIBRATION_LOCK_PATH = Path(__file__).with_name(
-    "identifiable_gate_v12_calibration_lock.json"
-)
+CALIBRATION_LOCK_PATH = REPO_ROOT / "formal_protocol.yaml"
 GATE_SUPPORT_PATH = (
     REPO_ROOT / "dilu" / "driver_agent" / "reasoning" / "rgd_support.py"
 )

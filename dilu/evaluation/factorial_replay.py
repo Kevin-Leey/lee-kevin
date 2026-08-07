@@ -151,6 +151,14 @@ FACTORIAL_ARMS: Tuple[FactorialArm, ...] = (
     FactorialArm("neither", False, False),
 )
 
+# ``neither`` is the no-gate control within the 2x2 query/release factorial:
+# it still executes every frozen proposal.  The formal comparison additionally
+# needs a genuine Fast-only arm that never issues a slow request.  Keep the
+# legacy four-arm tuple stable for existing artifacts and expose the explicit
+# five-arm design separately.
+FAST_ONLY_ARM = FactorialArm("fast_only", False, False)
+FORMAL_FACTORIAL_ARMS: Tuple[FactorialArm, ...] = FACTORIAL_ARMS + (FAST_ONLY_ARM,)
+
 
 @dataclass(frozen=True)
 class ProposalRecord:
@@ -318,11 +326,36 @@ class ProposalReplayAgent:
     def snapshot_policy_state(self) -> Dict[str, Any]:
         return self.inner.snapshot_policy_state()
 
+    def snapshot_release_policy_state(self) -> Dict[str, Any]:
+        snapshot = getattr(self.inner, "snapshot_release_policy_state", None)
+        return snapshot() if callable(snapshot) else self.inner.snapshot_policy_state()
+
     def restore_policy_state(self, snapshot: Dict[str, Any]) -> None:
         self.inner.restore_policy_state(snapshot)
 
     def record_executed_action(self, action: int) -> None:
         self.inner.record_executed_action(int(action))
+
+    def uses_native_async_policy_pacing(self) -> bool:
+        """Factorial response timing is simulated in frames, never wall time."""
+        return False
+
+    def prepare_frame(self, frame: int) -> Optional[Dict[str, Any]]:
+        prepare = getattr(self.inner, "prepare_frame", None)
+        return prepare(int(frame)) if callable(prepare) else None
+
+    def pending_slow_requests(self) -> list[Dict[str, Any]]:
+        pending = getattr(self.inner, "pending_slow_requests", None)
+        return list(pending() or []) if callable(pending) else []
+
+    def end_episode(self, reason: str = "episode_end") -> list[Dict[str, Any]]:
+        end = getattr(self.inner, "end_episode", None)
+        return list(end(str(reason)) or []) if callable(end) else []
+
+    def close(self) -> None:
+        close = getattr(self.inner, "close", None)
+        if callable(close):
+            close()
 
     def decide(self, state: Any) -> Tuple[int, str, Dict[str, Any]]:
         frame = int(self.frame)
@@ -411,6 +444,12 @@ class ProposalReplayAgent:
             }
         )
         metadata.update(admission_audit)
+        if self.arm.name == FAST_ONLY_ARM.name:
+            self.gate_rejected_count += 1
+            metadata["factorial_query_rejection_reason"] = "fast_only_control"
+            self.last_system_used = "fast"
+            return int(fast_action), str(fast_response), metadata
+
         if self.arm.query_gate_enabled and not gate_passed:
             self.gate_rejected_count += 1
             metadata["factorial_query_rejection_reason"] = "query_gate_failed"

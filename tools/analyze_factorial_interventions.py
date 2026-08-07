@@ -512,10 +512,31 @@ def _event_rollout_row(
         int(baseline["fast_action"]) == fast_action,
         f"{context}: matched Fast proposal drift",
     )
-    require(
-        int(baseline["effective_action"]) == fast_action,
-        f"{context}: matched Fast effective action drift",
-    )
+    if not legacy_v2:
+        require(
+            int(baseline["effective_action"]) == fast_action,
+            f"{context}: matched Fast effective action drift",
+        )
+
+    if legacy_v2 and unavailable:
+        return _event_effect_row(
+            arm=arm,
+            seed=seed,
+            request_id=request_id,
+            source_frame=source_frame,
+            frame=frame,
+            fast_action=fast_action,
+            slow_action=slow_action,
+            selected_action=selected_action,
+            selection_distinct=selection_distinct,
+            final_action=final_action,
+            rejected=rejected,
+            unavailable=unavailable,
+            baseline=baseline,
+            horizon=horizon,
+            gamma=gamma,
+            epsilon=epsilon,
+        )
 
     try:
         candidate = _run_branch(snapshot, dict(cfg), seed, slow_action, horizon, gamma)

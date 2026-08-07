@@ -1,11 +1,14 @@
+import csv
 import json
+import hashlib
 import logging
 import sys
 from io import StringIO
+from pathlib import Path
 
 import pytest
 
-from dilu.evaluation.factorial_replay import FactorialArm
+from dilu.evaluation.factorial_replay import FactorialArm, ProposalRecord
 from tools.run_query_release_factorial import (
     DEFAULT_PROPOSAL_SOURCE_POLICY,
     DISTINCT_ACTION_METRIC_STAGE,
@@ -13,17 +16,25 @@ from tools.run_query_release_factorial import (
     _empirical_assignment,
     _factorial_group_config,
     _latency_seconds_to_policy_steps,
+    load_proposal_bank,
+    _named_latency_assignment,
     _primitive_selection_metric_fields,
+    _proposal_manifest,
     _query_event,
     _release_execution_is_distinct,
     _stress_assignment,
+    _save_factorial_episode,
     _validate_event_lifecycle_contract,
+    _validate_formal_factorial_preflight,
+    _validate_formal_proposal_source_bundle,
     _validate_outcome_metrics,
     _validate_proposal_source,
     _validate_query_gate_accounting,
     _validate_request_outcome_accounting,
     _worker_output_context,
+    parse_args,
 )
+from tools.run_main_table_runtime import load_formal_base_config, load_formal_protocol
 
 
 def _lifecycle_event(**overrides):
@@ -47,6 +58,37 @@ def _lifecycle_event(**overrides):
     }
     event.update(overrides)
     return event
+
+
+def test_formal_five_arm_defaults_and_seed_contract(tmp_path):
+    args = parse_args(["--result-root", str(tmp_path)])
+    assert args.design == "five_arm"
+    assert args.seed_start == 5000
+    assert args.seeds == 30
+    assert args.latency_profile == "frozen"
+
+    protocol = load_formal_protocol(Path("formal_protocol.yaml"))
+    base_cfg = load_formal_base_config(protocol)
+    horizon = _validate_formal_factorial_preflight(
+        protocol=protocol,
+        base_cfg=base_cfg,
+        design=args.design,
+        seeds=list(range(5000, 5030)),
+        latency_profile=args.latency_profile,
+        fixed_latency_steps=args.fixed_delay_steps,
+        result_root=tmp_path,
+    )
+    assert horizon.expected_policy_steps == 300
+    with pytest.raises(ValueError, match="seed cohort drift"):
+        _validate_formal_factorial_preflight(
+            protocol=protocol,
+            base_cfg=base_cfg,
+            design=args.design,
+            seeds=list(range(5001, 5031)),
+            latency_profile=args.latency_profile,
+            fixed_latency_steps=args.fixed_delay_steps,
+            result_root=tmp_path,
+        )
 
 
 def _valid_metric_payload():
@@ -118,6 +160,33 @@ def test_stress_assignment_depends_only_on_request_identity():
     assert _stress_assignment("factorial:5000:0:00") == (22, "valid")
 
 
+def test_named_latency_profiles_are_deterministic_and_semantically_distinct():
+    first = {
+        "seed": 5000,
+        "request_id": "factorial:5000:0:00",
+        "outcome": "valid",
+    }
+    second = {
+        "seed": 5000,
+        "request_id": "factorial:5000:21:01",
+        "outcome": "valid",
+    }
+
+    for profile in ("jitter", "burst", "drop", "out_of_order"):
+        assert _named_latency_assignment(
+            profile, first, median_steps=17
+        ) == _named_latency_assignment(profile, first, median_steps=17)
+
+    early = _named_latency_assignment("out_of_order", first, median_steps=17)
+    late = _named_latency_assignment("out_of_order", second, median_steps=17)
+    assert early == (27, "valid")
+    assert late == (7, "valid")
+    assert _named_latency_assignment("burst", first, median_steps=17)[0] in {17, 32}
+    drop_steps, drop_outcome = _named_latency_assignment("drop", first, median_steps=17)
+    assert drop_steps in {17, 27}
+    assert drop_outcome in {"valid", "timeout"}
+
+
 def test_empirical_assignment_is_request_deterministic_and_order_invariant():
     samples = [
         (5001, 20, 2.01),
@@ -160,9 +229,456 @@ def test_factorial_prediction_is_independent_of_request_latency_profile():
 
     assert replay["extra_latency_s"] == pytest.approx(0.71)
     assert replay["delay_steps"] == 8
+    assert replay["proposal_backed_execution_available"] is True
     assert overrides["factorial_predicted_latency_s"] == pytest.approx(0.71)
     assert overrides["factorial_predicted_latency_steps"] == 8
+    assert overrides["asynchronous_slow_path"]["enable"] is False
     assert _latency_seconds_to_policy_steps(2.7) == 27
+
+
+def _write_native_proposal_source(tmp_path, *, tamper_hash=False, dropped=False):
+    seed_dir = tmp_path / "seed_5000"
+    event_dir = seed_dir / "event_logs"
+    reasoning_dir = seed_dir / "ep_5000"
+    event_dir.mkdir(parents=True)
+    reasoning_dir.mkdir(parents=True)
+    request_id = "online:episode:0:0000"
+    response = '{"action":4,"confidence":0.9,"reason":"decelerate"}'
+    identity = {
+        "action": 4,
+        "confidence": 0.9,
+        "reasoning": "decelerate",
+        "response": response,
+    }
+    response_hash = hashlib.sha256(
+        json.dumps(
+            identity,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    if tamper_hash:
+        response_hash = "0" * 64
+    issuance = {
+        "frame": 0,
+        "native_async_slow_path": True,
+        "slow_request_attempted": True,
+        "closed_loop_latency_source_frame": 0,
+        "closed_loop_latency_issuance_event": True,
+        "closed_loop_latency_issued_request_id": request_id,
+        "closed_loop_latency_issued_response_outcome": "pending",
+        "query_state_fast_proposal_action": 1,
+    }
+    terminal = {
+        "frame": 16,
+        "native_async_slow_path": True,
+        "closed_loop_latency_terminal_event": True,
+        "closed_loop_latency_terminal_request_id": request_id,
+        "closed_loop_latency_terminal_response_outcome": "valid",
+        "closed_loop_latency_response_outcome": "valid",
+        "slow_response_action": 4,
+        "slow_response_confidence": 0.9,
+        "slow_response_reasoning": "decelerate",
+        "slow_response_text": response,
+        "closed_loop_latency_response_sha256": response_hash,
+        "slow_response_wall_latency_s": 1.572,
+        "query_state_slow_pre_guard_action": 4,
+    }
+    payload = {
+        "events": [issuance] if dropped else [issuance, terminal],
+        "pending_releases_dropped_at_episode_end": (
+            [{"request_id": request_id}] if dropped else []
+        ),
+    }
+    (event_dir / "event_log_highway_5000_5000.json").write_text(
+        json.dumps(payload), encoding="utf-8"
+    )
+    (reasoning_dir / "highway_5000_reasoning_records.json").write_text(
+        json.dumps(
+            {
+                "analysis_records": [
+                    {"frame_id": 0, "predicted_action_id": 1},
+                    {"frame_id": 16, "predicted_action_id": 4},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (seed_dir / "experiment_snapshot.json").write_text(
+        json.dumps(
+            {
+                "fixed_seed_override": 5000,
+                "config": {
+                    "protocol_name": "always_slow",
+                    "system_routing": {"simple": "slow", "complex": "slow"},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    return tmp_path, response_hash
+
+
+def _write_formal_proposal_source_bundle(tmp_path, *, partition):
+    seeds = (
+        tuple(range(5000, 5030))
+        if partition == "main"
+        else tuple(range(6000, 6020))
+    )
+    bundle_root = tmp_path / f"{partition}_bundle"
+    source_root = bundle_root / "always_slow" / "highway"
+    backend = {
+        "provider": "siliconflow",
+        "requested_model": "Qwen/Qwen3-8B",
+        "resolved_chat_model": "Qwen/Qwen3-8B",
+    }
+    rows = []
+    for seed in seeds:
+        seed_dir = source_root / f"seed_{seed}"
+        event_dir = seed_dir / "event_logs"
+        reasoning_dir = seed_dir / "ep_0"
+        event_dir.mkdir(parents=True)
+        reasoning_dir.mkdir(parents=True)
+        (event_dir / f"event_log_highway_{seed}.json").write_text(
+            json.dumps({"events": []}), encoding="utf-8"
+        )
+        reasoning_path = reasoning_dir / f"highway_{seed}_reasoning_records.json"
+        reasoning_path.write_text(
+            json.dumps({"analysis_records": []}), encoding="utf-8"
+        )
+        identities = {
+            "protocol_id": f"always_slow::{seed}",
+            "protocol_hash": hashlib.sha256(
+                f"protocol:{seed}".encode("ascii")
+            ).hexdigest(),
+            "config_hash": hashlib.sha256(
+                f"config:{seed}".encode("ascii")
+            ).hexdigest(),
+            "source_hash": hashlib.sha256(b"formal-source").hexdigest(),
+        }
+        config = {
+            "protocol_name": "always_slow",
+            "protocol_version": 13,
+            "env_type": "highway-v0",
+            "episodes_num": 1,
+            "simulation_duration": 30,
+            "policy_frequency": 10,
+            "simulation_frequency": 10,
+            "fixed_seed_override": seed,
+            "system_routing": {"simple": "slow", "complex": "slow"},
+        }
+        common = {
+            **identities,
+            "fixed_seed_override": seed,
+            "seed_start": seed,
+            "resolved_seeds": [seed],
+            "protocol_name": "always_slow",
+            "env_type": "highway-v0",
+            "config": config,
+            "protocol_manifest": {
+                "protocol_name": "always_slow",
+                "protocol_version": 13,
+                "selected_group": "always_slow",
+                "selected_environment": "highway-v0",
+            },
+            "llm_backend": backend,
+        }
+        (seed_dir / "runtime_manifest.json").write_text(
+            json.dumps(common), encoding="utf-8"
+        )
+        (seed_dir / "experiment_snapshot.json").write_text(
+            json.dumps({**common, "seeds_used": [seed]}), encoding="utf-8"
+        )
+        rows.append(
+            {
+                "group": "always_slow",
+                "env": "highway-v0",
+                "seed_idx": seed,
+                "fixed_seed_override": seed,
+                "seed_start": seed,
+                "requested_seed_start": seeds[0],
+                "episodes_run": 1,
+                "result_dir": str(seed_dir.resolve()),
+                **identities,
+            }
+        )
+
+    run_rows_path = bundle_root / "always_slow" / "always_slow_run_rows.csv"
+    with run_rows_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    horizon = {
+        "episode_duration_s": 30,
+        "policy_frequency_hz": 10,
+        "simulation_frequency_hz": 10,
+        "expected_policy_steps": 300,
+    }
+    manifest_path = bundle_root / "result_bundle_manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "bundle_kind": "formal_run",
+                "partition": partition,
+                "groups": ["always_slow"],
+                "envs": ["highway-v0"],
+                "group_env_matrix": {"always_slow": ["highway-v0"]},
+                "seeds": len(seeds),
+                "episodes": 1,
+                "seed_start": seeds[0],
+                "seed_labels": list(seeds),
+                "seed_value": None,
+                "simulation_duration": 30,
+                **horizon,
+                "execution_horizon_by_group_env": {
+                    "always_slow": {"highway-v0": horizon}
+                },
+                "method_version": "action_aligned_release_gate_v13",
+                "query_gate_method_version": "identifiable_gate_v12",
+                "release_contract_version": "action_cost_alignment_v2",
+            }
+        ),
+        encoding="utf-8",
+    )
+    return {
+        "source_root": source_root,
+        "bundle_root": bundle_root,
+        "manifest_path": manifest_path,
+        "run_rows_path": run_rows_path,
+        "seeds": seeds,
+    }
+
+
+def _formal_proposal_bank(source_root, seeds):
+    response_hash = hashlib.sha256(b"formal-response").hexdigest()
+    return {
+        seed: {
+            0: ProposalRecord(
+                seed=seed,
+                source_frame=0,
+                request_id=f"factorial:{seed}:0:00",
+                raw_slow_action=1,
+                latency_steps=17,
+                outcome="valid",
+                response_text="formal-response",
+                response_sha256=response_hash,
+                source_artifact=str(
+                    source_root
+                    / f"seed_{seed}"
+                    / "ep_0"
+                    / f"highway_{seed}_reasoning_records.json"
+                ),
+            )
+        }
+        for seed in seeds
+    }
+
+
+def _rewrite_json(path, mutate):
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    mutate(payload)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("partition", "latency_profile", "fixed_steps"),
+    [("main", "frozen", None), ("mechanism", "fixed", 17)],
+)
+def test_proposal_manifest_closes_over_formal_source_bundle(
+    tmp_path, partition, latency_profile, fixed_steps
+):
+    source = _write_formal_proposal_source_bundle(tmp_path, partition=partition)
+    bank = _formal_proposal_bank(source["source_root"], source["seeds"])
+
+    manifest = _proposal_manifest(
+        bank,
+        source_root=source["source_root"],
+        latency_profile=latency_profile,
+        fixed_latency_steps=fixed_steps,
+    )
+
+    formal = manifest["formal_source_bundle"]
+    assert formal["partition"] == partition
+    assert formal["method_version"] == "action_aligned_release_gate_v13"
+    assert formal["expected_policy_steps"] == 300
+    assert formal["result_bundle_manifest"]["sha256"]
+    assert formal["run_rows"]["sha256"]
+    assert all("runtime_manifest" in row for row in manifest["source_artifacts"])
+
+
+@pytest.mark.parametrize(
+    ("corruption", "message"),
+    [
+        ("missing_manifest", "no enclosing result bundle manifest"),
+        ("wrong_version", "method_version mismatch"),
+        ("wrong_partition", "partition/cohort mismatch"),
+        ("wrong_horizon", "expected_policy_steps mismatch"),
+        ("missing_group", "missing always_slow"),
+        ("wrong_backend", "LLM provider mismatch"),
+        ("identity_drift", "config_hash identity mismatch"),
+    ],
+)
+def test_formal_proposal_source_rejects_provenance_drift(
+    tmp_path, corruption, message
+):
+    source = _write_formal_proposal_source_bundle(tmp_path, partition="main")
+    if corruption == "missing_manifest":
+        source["manifest_path"].unlink()
+    elif corruption == "wrong_version":
+        _rewrite_json(
+            source["manifest_path"],
+            lambda payload: payload.__setitem__("method_version", "wrong"),
+        )
+    elif corruption == "wrong_partition":
+        _rewrite_json(
+            source["manifest_path"],
+            lambda payload: payload.__setitem__("partition", "mechanism"),
+        )
+    elif corruption == "wrong_horizon":
+        _rewrite_json(
+            source["manifest_path"],
+            lambda payload: payload.__setitem__("expected_policy_steps", 299),
+        )
+    elif corruption == "missing_group":
+        _rewrite_json(
+            source["manifest_path"],
+            lambda payload: payload.__setitem__("groups", []),
+        )
+    elif corruption == "wrong_backend":
+        for name in ("runtime_manifest.json", "experiment_snapshot.json"):
+            _rewrite_json(
+                source["source_root"] / "seed_5000" / name,
+                lambda payload: payload["llm_backend"].__setitem__(
+                    "provider", "openai"
+                ),
+            )
+    elif corruption == "identity_drift":
+        _rewrite_json(
+            source["source_root"] / "seed_5000" / "runtime_manifest.json",
+            lambda payload: payload.__setitem__("config_hash", "f" * 64),
+        )
+
+    with pytest.raises(RuntimeError, match=message):
+        _validate_formal_proposal_source_bundle(
+            source["source_root"], source["seeds"]
+        )
+
+
+def test_formal_proposal_source_rejects_partial_seed_cohort(tmp_path):
+    source = _write_formal_proposal_source_bundle(tmp_path, partition="main")
+
+    with pytest.raises(RuntimeError, match="seed cohort must be exactly"):
+        _validate_formal_proposal_source_bundle(
+            source["source_root"], source["seeds"][:-1]
+        )
+
+
+def _write_scheduled_proposal_source(tmp_path, frames):
+    seed_dir = tmp_path / "seed_5000"
+    event_dir = seed_dir / "event_logs"
+    reasoning_dir = seed_dir / "ep_0"
+    event_dir.mkdir(parents=True)
+    reasoning_dir.mkdir(parents=True)
+    events = [
+        {
+            "frame": frame,
+            "closed_loop_latency_source_frame": frame,
+            "slow_request_attempted": True,
+            "slow_response_action": 1,
+            "slow_response_wall_latency_s": 1.0,
+            "slow_response_text": "response",
+            "closed_loop_latency_response_outcome": "valid",
+        }
+        for frame in frames
+    ]
+    (event_dir / "event_log_highway_5000.json").write_text(
+        json.dumps({"events": events}), encoding="utf-8"
+    )
+    (reasoning_dir / "highway_5000_reasoning_records.json").write_text(
+        json.dumps({"analysis_records": []}), encoding="utf-8"
+    )
+    (seed_dir / "experiment_snapshot.json").write_text(
+        json.dumps(
+            {
+                "fixed_seed_override": 5000,
+                "config": {
+                    "protocol_name": "always_slow",
+                    "system_routing": {"simple": "slow", "complex": "slow"},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    return tmp_path
+
+
+def test_proposal_bank_rejects_more_than_six_source_requests(tmp_path):
+    source = _write_scheduled_proposal_source(tmp_path, range(0, 147, 21))
+
+    with pytest.raises(RuntimeError, match="formal budget of 6"):
+        load_proposal_bank(source, [5000], latency_profile="frozen")
+
+
+def test_proposal_bank_rejects_source_frames_less_than_21_apart(tmp_path):
+    source = _write_scheduled_proposal_source(tmp_path, [0, 20])
+
+    with pytest.raises(RuntimeError, match="source-frame gap is below 21"):
+        load_proposal_bank(source, [5000], latency_profile="frozen")
+
+
+def test_factorial_event_json_replaces_nonfinite_values_with_null(tmp_path):
+    _save_factorial_episode(
+        root=tmp_path,
+        seed=7,
+        prefix="highway_7",
+        events=[
+            {
+                "frame": 0,
+                "terminal_cause": "truncated",
+                "latency": float("nan"),
+                "nested": [float("inf"), {"value": float("-inf")}],
+            }
+        ],
+        pending=[],
+        snapshots={},
+        physical_recorder=None,
+        reasoning_recorder=None,
+    )
+    event_path = tmp_path / "event_logs" / "event_log_highway_7_7.json"
+    raw = event_path.read_text(encoding="utf-8")
+
+    def reject_constant(value):
+        raise AssertionError(f"non-standard JSON constant persisted: {value}")
+
+    payload = json.loads(raw, parse_constant=reject_constant)
+    assert payload["events"][0]["latency"] is None
+    assert payload["events"][0]["nested"] == [None, {"value": None}]
+
+
+def test_native_proposal_bank_joins_issuance_to_terminal_by_request_id(tmp_path):
+    source, response_hash = _write_native_proposal_source(tmp_path)
+
+    bank = load_proposal_bank(source, [5000], latency_profile="frozen")
+
+    proposal = bank[5000][0]
+    assert proposal.raw_slow_action == 4
+    assert proposal.latency_steps == 16
+    assert proposal.outcome == "valid"
+    assert proposal.response_sha256 == response_hash
+
+
+def test_native_proposal_bank_rejects_tampered_response_identity(tmp_path):
+    source, _ = _write_native_proposal_source(tmp_path, tamper_hash=True)
+    with pytest.raises(ValueError, match="does not match"):
+        load_proposal_bank(source, [5000], latency_profile="frozen")
+
+
+def test_native_proposal_bank_rejects_dropped_request(tmp_path):
+    source, _ = _write_native_proposal_source(tmp_path, dropped=True)
+    with pytest.raises(RuntimeError, match="dropped requests"):
+        load_proposal_bank(source, [5000], latency_profile="frozen")
 
 
 def test_gate_independent_source_requires_forced_slow_snapshot(tmp_path):
@@ -520,6 +1036,41 @@ def test_query_disabled_arm_cannot_reject_candidates():
         )
 
 
+def test_fast_only_arm_suppresses_every_frozen_candidate():
+    arm = FactorialArm("fast_only", False, False)
+    candidates = [
+        _lifecycle_event(
+            factorial_candidate_query=True,
+            factorial_query_issued=False,
+            factorial_query_rejection_reason="fast_only_control",
+        )
+    ]
+
+    _validate_query_gate_accounting(
+        arm,
+        candidate_events=candidates,
+        candidate_count=1,
+        issued_count=0,
+        gate_rejected_count=1,
+        context="fast-only",
+    )
+    _validate_event_lifecycle_contract(candidates, context="fast-only")
+    with pytest.raises(RuntimeError, match="provenance drift"):
+        _validate_query_gate_accounting(
+            arm,
+            candidate_events=[
+                _lifecycle_event(
+                    factorial_candidate_query=True,
+                    factorial_query_rejection_reason="query_gate_failed",
+                )
+            ],
+            candidate_count=1,
+            issued_count=0,
+            gate_rejected_count=1,
+            context="fast-only",
+        )
+
+
 def test_query_enabled_arm_requires_exact_issued_rejected_partition():
     arm = FactorialArm("full", True, True)
     candidates = [
@@ -551,6 +1102,8 @@ def test_query_enabled_arm_requires_exact_issued_rejected_partition():
             gate_rejected_count=0,
             context="test arm",
         )
+
+
 def test_outcome_metrics_are_strictly_validated():
     assert _validate_outcome_metrics(
         {"collision": False},

@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from dilu.safety.rss_calculator import FASTER, IDLE, LANE_LEFT, SLOWER, RSSCalculator
 
@@ -240,6 +241,24 @@ class RSSTargetLaneEscapeTests(unittest.TestCase):
         }
 
         self.assertTrue(RSSCalculator.highway_adjacent_acceleration_risk(state))
+
+    def test_override_candidates_are_restricted_to_available_actions(self):
+        available = [LANE_LEFT, IDLE, FASTER, SLOWER]
+        with patch.object(
+            self.rss,
+            "_action_is_safe",
+            side_effect=lambda _state, action: action == 2,
+        ):
+            action, reason, overridden = self.rss.filter_action(
+                IDLE,
+                available,
+                {"scenario_type": "highway", "speed": 20.0},
+            )
+
+        self.assertIn(action, available)
+        self.assertEqual(action, SLOWER)
+        self.assertTrue(overridden)
+        self.assertEqual(reason, "RSS_DCBF_EMERGENCY_BRAKE")
 
 
 if __name__ == "__main__":

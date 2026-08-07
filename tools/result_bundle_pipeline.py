@@ -1,7 +1,8 @@
 from datetime import datetime
 import json
+import math
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from tools.protocol_io import dump_json
 
@@ -21,7 +22,8 @@ def _coerce_numeric(value: Any) -> Optional[float]:
     if isinstance(value, bool):
         return float(int(value))
     if isinstance(value, (int, float)):
-        return float(value)
+        resolved = float(value)
+        return resolved if math.isfinite(resolved) else None
     if isinstance(value, str):
         text = value.strip()
         if not text:
@@ -34,7 +36,8 @@ def _coerce_numeric(value: Any) -> Optional[float]:
         if lowered in {"none", "null", "nan"}:
             return None
         try:
-            return float(text)
+            resolved = float(text)
+            return resolved if math.isfinite(resolved) else None
         except ValueError:
             return None
     return None
@@ -53,29 +56,45 @@ def write_result_bundle_manifest(
     protocol_path: str,
     group_env_matrix: Dict[str, Sequence[str]],
     seed_start: int = 0,
+    partition: str = "auto",
+    execution_horizon_by_group_env: Optional[
+        Mapping[str, Mapping[str, Mapping[str, Any]]]
+    ] = None,
 ) -> Path:
     bundle_root = root / run_mode / run_stamp
     bundle_root.mkdir(parents=True, exist_ok=True)
     manifest_path = bundle_root / "result_bundle_manifest.json"
-    existing = json.loads(manifest_path.read_text(encoding="utf-8-sig")) if manifest_path.is_file() else {}
-    effective_groups = list(_ordered_unique(list(existing.get("groups", []) or []) + list(groups)))
-    effective_envs = list(_ordered_unique(list(existing.get("envs", []) or []) + list(envs)))
+    effective_groups = list(_ordered_unique(list(groups)))
+    effective_envs = list(_ordered_unique(list(envs)))
     effective_group_env_matrix: Dict[str, List[str]] = {
-        str(group_name): list(env_list or [])
-        for group_name, env_list in dict(existing.get("group_env_matrix", {}) or {}).items()
+        str(group_name): _ordered_unique(list(env_list or []))
+        for group_name, env_list in dict(group_env_matrix or {}).items()
     }
-    for group_name, env_list in dict(group_env_matrix or {}).items():
-        effective_group_env_matrix[str(group_name)] = _ordered_unique(
-            list(effective_group_env_matrix.get(str(group_name), [])) + list(env_list or [])
-        )
     resolved_seed_labels = (
         [int(seed_value)] * int(seeds)
         if seed_value is not None
         else list(range(int(seed_start), int(seed_start) + int(seeds)))
     )
+    horizon_matrix = {
+        str(group): {
+            str(env): dict(horizon)
+            for env, horizon in dict(env_horizons or {}).items()
+        }
+        for group, env_horizons in dict(execution_horizon_by_group_env or {}).items()
+    }
+    unique_horizons = {
+        json.dumps(horizon, sort_keys=True, separators=(",", ":")): horizon
+        for env_horizons in horizon_matrix.values()
+        for horizon in env_horizons.values()
+    }
+    uniform_horizon = (
+        next(iter(unique_horizons.values())) if len(unique_horizons) == 1 else {}
+    )
+    effective_duration = uniform_horizon.get("episode_duration_s")
     manifest = {
         "updated": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "bundle_kind": str(run_mode),
+        "partition": str(partition),
         "bundle_root": str(bundle_root),
         "groups": effective_groups,
         "group_env_matrix": effective_group_env_matrix,
@@ -86,7 +105,16 @@ def write_result_bundle_manifest(
         "seed_start": int(seed_start),
         "seed_labels": resolved_seed_labels,
         "seed_value": (None if seed_value is None else int(seed_value)),
-        "simulation_duration": (None if simulation_duration is None else int(simulation_duration)),
+        "simulation_duration": (
+            effective_duration
+            if effective_duration is not None
+            else (None if simulation_duration is None else int(simulation_duration))
+        ),
+        "episode_duration_s": uniform_horizon.get("episode_duration_s"),
+        "policy_frequency_hz": uniform_horizon.get("policy_frequency_hz"),
+        "simulation_frequency_hz": uniform_horizon.get("simulation_frequency_hz"),
+        "expected_policy_steps": uniform_horizon.get("expected_policy_steps"),
+        "execution_horizon_by_group_env": horizon_matrix,
         "formal_protocol_path": protocol_path,
         "entry_artifacts": ["result_bundle_manifest.json", "overall_group_comparison.csv", "overall_group_comparison.json"],
     }

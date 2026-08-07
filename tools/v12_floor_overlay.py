@@ -21,16 +21,15 @@ from typing import Any, Mapping, MutableMapping, Sequence
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_PROTOCOL_PATH = REPO_ROOT / "formal_protocol_v12.yaml"
-DEFAULT_LOCK_PATH = Path(__file__).with_name(
-    "identifiable_gate_v12_calibration_lock.json"
-)
+DEFAULT_PROTOCOL_PATH = REPO_ROOT / "formal_protocol.yaml"
+DEFAULT_LOCK_PATH = DEFAULT_PROTOCOL_PATH
 
 METHOD_VERSION = "identifiable_gate_v12"
 FLOOR_OVERLAY_SCHEMA = "identifiable_gate_v12_runtime_floor_overlay_v1"
 FLOOR_OVERLAY_ROLE = "immutable_calibration_floor_runtime_overlay"
 FLOOR_SELECTION_SOURCE = "v12_calibration_selection_manifest"
 PROTOCOL_PLACEHOLDER_STATUS = "calibration_placeholder_not_for_deployment"
+PROTOCOL_LOCKED_STATUS = "inherited_unchanged_from_v12_calibration_lock"
 APPLIED_STATUS = "locked_calibration_overlay_applied"
 PROTOCOL_PLACEHOLDER_VALUE = 0.20
 
@@ -502,26 +501,30 @@ def apply_floor_overlay(
 ) -> dict[str, Any]:
     """Return a copied config with the single verified floor tuple injected.
 
-    In formal mode the input must still contain the exact preregistration
-    placeholder.  This rejects a protocol edit, CLI override, or a second
-    overlay before any runtime contract is constructed.
+    In formal mode the input must contain either the preregistration placeholder
+    or the exact locked tuple embedded in the unified formal protocol. This
+    rejects protocol edits, CLI overrides, and second application before any
+    runtime contract is constructed.
     """
 
     cfg = deepcopy(dict(base_cfg))
     _require("_v12_floor_overlay" not in cfg, "runtime config already contains a floor overlay")
     core = _core_story(cfg)
     if formal_runtime:
+        status = core.get("v12_floor_status")
         _require(
-            core.get("v12_floor_status") == PROTOCOL_PLACEHOLDER_STATUS,
-            "formal runtime requires the untouched v12 floor placeholder status",
+            status in {PROTOCOL_PLACEHOLDER_STATUS, PROTOCOL_LOCKED_STATUS},
+            "formal runtime requires the registered v12 floor status",
         )
         for field in FLOOR_FIELDS:
             _require(field in core, f"formal protocol is missing placeholder {field}")
             observed = _finite_unit(core[field], field)
-            _require(
-                observed == PROTOCOL_PLACEHOLDER_VALUE,
-                f"formal protocol/CLI floor override detected for {field}",
+            expected = (
+                PROTOCOL_PLACEHOLDER_VALUE
+                if status == PROTOCOL_PLACEHOLDER_STATUS
+                else float(verified.floors[field])
             )
+            _require(observed == expected, f"formal protocol/CLI floor override detected for {field}")
             _require(
                 f"{field}_source" not in core,
                 f"formal protocol already overrides {field}_source",

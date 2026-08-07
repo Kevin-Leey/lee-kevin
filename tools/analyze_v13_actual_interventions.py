@@ -16,12 +16,15 @@ import hashlib
 import json
 import math
 import os
+import sys
 from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from tools.analyze_release_state_rollouts import (  # noqa: E402
     RAW_ACTIONS,

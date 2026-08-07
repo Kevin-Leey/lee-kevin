@@ -1,7 +1,8 @@
 import os
 import hashlib
+import math
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Mapping, Tuple
 
 import csv
 import json
@@ -40,11 +41,37 @@ def load_yaml(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(handle) or {}
 
 
+def _json_safe(value: Any) -> Any:
+    """Return a standards-compliant JSON value, replacing non-finite numbers."""
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, Mapping):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    item = getattr(value, "item", None)
+    if callable(item):
+        try:
+            return _json_safe(item())
+        except (TypeError, ValueError):
+            pass
+    return value
+
+
 def dump_json(path: Path, payload: Dict[str, Any]) -> None:
     import time as _time
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    tmp_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    tmp_path.write_text(
+        json.dumps(
+            _json_safe(payload),
+            indent=2,
+            ensure_ascii=False,
+            allow_nan=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     for _attempt in range(20):
         try:
             os.replace(tmp_path, path)

@@ -45,6 +45,13 @@ class PhysicalMetrics:
     avg_speed: float
     avg_reward: float
     driving_distance: float
+    expected_total_frames: Optional[int] = None
+    route_completion: Optional[float] = None
+    success_completion_threshold: float = 0.95
+    success_metric_mode: str = "completion_threshold"
+    safety_qualified_speed: float = 0.0
+    episode_total_reward: float = 0.0
+    mean_reward_per_frame: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -60,6 +67,7 @@ class PhysicalMetricsRecorder:
         result_folder: str,
         *,
         step_seconds: float = 1.0,
+        expected_total_frames: Optional[int] = None,
         success_completion_threshold: float = 0.95,
         success_metric_mode: str = "completion_threshold",
         env_type: str = "",
@@ -69,8 +77,34 @@ class PhysicalMetricsRecorder:
         self.seed = int(seed)
         self.result_folder = str(result_folder)
         self.step_seconds = max(0.0, float(step_seconds))
+        if expected_total_frames is None:
+            self.expected_total_frames = None
+        else:
+            if isinstance(expected_total_frames, bool):
+                raise ValueError("expected_total_frames must be a positive integer")
+            try:
+                numeric_expected_frames = float(expected_total_frames)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "expected_total_frames must be a positive integer"
+                ) from exc
+            if (
+                not math.isfinite(numeric_expected_frames)
+                or not numeric_expected_frames.is_integer()
+                or numeric_expected_frames <= 0.0
+            ):
+                raise ValueError("expected_total_frames must be a positive integer")
+            self.expected_total_frames = int(numeric_expected_frames)
         self.success_completion_threshold = float(success_completion_threshold)
-        self.success_metric_mode = str(success_metric_mode)
+        if not math.isfinite(self.success_completion_threshold) or not (
+            0.0 <= self.success_completion_threshold <= 1.0
+        ):
+            raise ValueError("success_completion_threshold must be between 0 and 1")
+        self.success_metric_mode = str(success_metric_mode or "").strip().lower()
+        if self.success_metric_mode not in {"completion_threshold", "collision_free"}:
+            raise ValueError(
+                "success_metric_mode must be 'completion_threshold' or 'collision_free'"
+            )
         self.env_type = str(env_type)
         self.published_reward_vmax_mps = float(published_reward_vmax_mps)
         self.frames: List[Dict[str, Any]] = []
@@ -112,6 +146,27 @@ class PhysicalMetricsRecorder:
         speeds = [float(row["speed"]) for row in self.frames if math.isfinite(float(row["speed"]))]
         rewards = [float(row["reward"]) for row in self.frames]
         collision = any(bool(row["crashed"]) for row in self.frames)
+        total_frames = len(self.frames)
+        route_completion = (
+            min(1.0, float(total_frames) / float(self.expected_total_frames))
+            if self.expected_total_frames is not None
+            else None
+        )
+        if self.success_metric_mode == "completion_threshold":
+            success_completion = bool(
+                not collision
+                and route_completion is not None
+                and route_completion >= self.success_completion_threshold
+            )
+        else:
+            # Retain the explicitly requested legacy collision-free mode while
+            # making the formal completion-threshold mode denominator-based.
+            success_completion = bool(not collision and total_frames > 0)
+        avg_speed = float(sum(speeds) / len(speeds)) if speeds else 0.0
+        episode_total_reward = float(sum(rewards)) if rewards else 0.0
+        mean_reward_per_frame = (
+            float(episode_total_reward / len(rewards)) if rewards else 0.0
+        )
         if len(self.frames) >= 2:
             start = self.frames[0]
             end = self.frames[-1]
@@ -129,11 +184,20 @@ class PhysicalMetricsRecorder:
         return PhysicalMetrics(
             episode_id=self.episode_id,
             seed=self.seed,
-            total_frames=len(self.frames),
+            total_frames=total_frames,
+            expected_total_frames=self.expected_total_frames,
+            route_completion=route_completion,
             collision=bool(collision),
-            success_completion=bool(not collision and bool(self.frames)),
-            avg_speed=float(sum(speeds) / len(speeds)) if speeds else 0.0,
-            avg_reward=float(sum(rewards) / len(rewards)) if rewards else 0.0,
+            success_completion=success_completion,
+            success_completion_threshold=self.success_completion_threshold,
+            success_metric_mode=self.success_metric_mode,
+            avg_speed=avg_speed,
+            safety_qualified_speed=avg_speed if success_completion else 0.0,
+            episode_total_reward=episode_total_reward,
+            mean_reward_per_frame=mean_reward_per_frame,
+            # Backward-compatible alias: historically avg_reward meant the
+            # per-frame mean, despite the aggregate calling it episode reward.
+            avg_reward=mean_reward_per_frame,
             driving_distance=float(distance),
         )
 

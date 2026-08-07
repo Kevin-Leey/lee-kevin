@@ -44,13 +44,23 @@ def _dropped_pending_rows(pending: Optional[Iterable[Mapping[str, Any]]]) -> lis
     rows: list[Dict[str, Any]] = []
     for item in list(pending or []):
         request_id = str(dict(item).get("request_id", "") or "")
-        rows.append(
-            {
-                "request_id": request_id,
-                "source_frame": dict(item).get("source_frame"),
-                "terminal_outcome": "dropped_at_episode_end",
-            }
-        )
+        source = dict(item)
+        row: Dict[str, Any] = {
+            "request_id": request_id,
+            "source_frame": source.get("source_frame"),
+            "terminal_outcome": "dropped_at_episode_end",
+        }
+        for key in (
+            "episode_token",
+            "release_frame",
+            "response_outcome",
+            "drop_reason",
+            "future_cancelled",
+            "native_async",
+        ):
+            if key in source:
+                row[key] = source[key]
+        rows.append(row)
     return rows
 
 
@@ -72,7 +82,7 @@ def finalize_episode_outputs(
     release_snapshots: Optional[Mapping[str, Any]] = None,
 ) -> Any:
     """Write one self-contained episode bundle and delegate aggregate storage."""
-    del agent, docs
+    del docs
     runtime_cfg = dict(cfg or {})
     schema_version = str(runtime_cfg.get("event_log_schema_version", EVENT_SCHEMA_VERSION) or "")
     if schema_version not in _SUPPORTED_EVENT_SCHEMAS:
@@ -85,7 +95,11 @@ def finalize_episode_outputs(
         snapshots,
         required=bool(runtime_cfg.get("require_release_snapshot_on_release", False)),
     )
-    dropped = _dropped_pending_rows(pending_latency_queue)
+    pending = [dict(item) for item in list(pending_latency_queue or [])]
+    end_episode = getattr(agent, "end_episode", None)
+    if callable(end_episode):
+        pending.extend(dict(item) for item in list(end_episode("episode_finalize") or []))
+    dropped = _dropped_pending_rows(pending)
 
     root = Path(result_dir)
     event_dir = root / "event_logs"

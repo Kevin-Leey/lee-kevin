@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from dilu.driver_agent.base.state import ActionType, DrivingState
@@ -107,6 +108,29 @@ def test_hidden_slower_brake_assist_pins_target_below_simulator_floor():
 
     assert executed == int(ActionType.IDLE)
     assert vehicle.speed_index == 0
+    assert vehicle.target_speed < 20.0
+
+
+def test_hidden_slower_brake_assist_accepts_numpy_target_speeds():
+    vehicle = SimpleNamespace(
+        speed=20.0,
+        speed_index=0,
+        target_speed=20.0,
+        target_speeds=np.asarray([20.0, 25.0, 30.0]),
+    )
+    unwrapped = SimpleNamespace(
+        get_available_actions=lambda: [int(ActionType.IDLE), int(ActionType.FASTER)],
+        vehicle=vehicle,
+    )
+    env = SimpleNamespace(unwrapped=unwrapped, spec=SimpleNamespace(id="highway-v0"))
+
+    executed = _apply_unavailable_slower_brake_assist(
+        env,
+        int(ActionType.SLOWER),
+        {"env_type": "highway-v0", "hidden_slower_bridge": {"enable": True}},
+    )
+
+    assert executed == int(ActionType.IDLE)
     assert vehicle.target_speed < 20.0
 
 

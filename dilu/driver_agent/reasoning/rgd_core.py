@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import logging
 import math
 import time
+import uuid
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -37,7 +40,11 @@ from dilu.driver_agent.reasoning.rgd_support import (
     resolve_release_dominance_guard,
     resolve_paper_baseline_trigger,
 )
-from dilu.driver_agent.reasoning.slow_thinker import SlowPathUnavailableError, SlowThinker
+from dilu.driver_agent.reasoning.slow_thinker import (
+    SlowPathUnavailableError,
+    SlowRequest,
+    SlowThinker,
+)
 from dilu.driver_agent.reasoning.support_memory import StateMemoryRetriever, resolve_memory_path
 from dilu.utils.junction_gap import assess_junction_gap
 from dilu.utils.shared import float_or_default
@@ -49,6 +56,19 @@ logger = logging.getLogger(__name__)
 FAST_INCUMBENT_CONTRACT_VERSION = "fast_incumbent_v1"
 FAST_INCUMBENT_STAGE = "query_state_complete_fast_stack_pre_route_pre_safety"
 FAST_INCUMBENT_SOURCE = "recoverability_provisional_fast_action"
+
+
+@dataclass
+class _PendingSlowInvocation:
+    request: SlowRequest
+    query_fast_action: int
+    query_fast_rule: str
+    query_fast_identity_sha256: str
+    query_recoverability_context: Dict[str, Any]
+    terminal_decision: Optional[RGDDecision] = None
+    terminal_failure_reason: str = ""
+    observed_frame: Optional[int] = None
+    observed_at_monotonic: Optional[float] = None
 
 
 def _action_id_or_default(value: Any, default: int = 1) -> int:
@@ -126,6 +146,28 @@ class RGDOrchestrator:
         self._rgd_min_observation_frames = max(1, int(self.config.get("rgd_min_observation_frames", 1) or 1))
         self._slow_call_attempts = 0
         self._slow_call_cooldown_remaining = 0
+        async_cfg = dict(self.config.get("asynchronous_slow_path", {}) or {})
+        self._async_slow_path_enabled = bool(async_cfg.get("enable", False))
+        replay_cfg = dict(self.config.get("closed_loop_latency_replay", {}) or {})
+        if self._async_slow_path_enabled and bool(replay_cfg.get("enable", False)):
+            raise ValueError(
+                "native asynchronous slow execution and scripted latency replay "
+                "are mutually exclusive"
+            )
+        self._async_min_release_frames = max(
+            1, int(async_cfg.get("min_release_frames", 1) or 1)
+        )
+        latest_source = async_cfg.get("latest_source_frame")
+        self._async_latest_source_frame: Optional[int] = (
+            None if latest_source is None else max(0, int(latest_source))
+        )
+        self._async_request_sequence = 0
+        self._episode_token = uuid.uuid4().hex[:16]
+        self._pending_slow_invocation: Optional[_PendingSlowInvocation] = None
+        self._release_ready_request_id: Optional[str] = None
+        self._prepared_frame: Optional[int] = None
+        self._episode_closed = False
+        self._dropped_request_ids: set[str] = set()
         self._support_memory_retriever: Optional[StateMemoryRetriever] = None
         if bool(self.config.get("enable_memory_retrieval", False)):
             few_shot_num = int(self.config.get("few_shot_num", 0) or 0)
@@ -284,7 +326,31 @@ class RGDOrchestrator:
                 observed_source="matched_fast_query",
             )
         slow_decision = self.slow.think(state=state, recoverability_context=recoverability_context)
-        slow_meta = dict(getattr(slow_decision, "agent_opinions", {}) or {})  # Collect slow-path diagnostic exports before building the routed decision wrapper.
+        slow_meta = dict(getattr(slow_decision, "stats", {}) or {})
+        response_identity_payload = {
+            "action": int(slow_decision.action),
+            "confidence": float(slow_decision.confidence),
+            "reasoning": str(slow_decision.reasoning),
+            "response": str(slow_meta.get("slow_response_text", "") or ""),
+        }
+        response_sha256 = hashlib.sha256(
+            json.dumps(
+                response_identity_payload,
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
+        slow_meta["closed_loop_latency_response_sha256"] = response_sha256
+        slow_meta.update(dict(getattr(slow_decision, "agent_opinions", {}) or {}))
+        slow_meta.update(
+            {
+                "slow_request_attempted": True,
+                "slow_request_valid_return": True,
+                "slow_request_failed": False,
+            }
+        )
         pass_meta = self._highway_fast_pass_override(state, int(slow_decision.action))
         pre_guard_action = int(pass_meta.get("rgd_highway_pass_resolved_action", slow_decision.action))
         selected_action = int(pre_guard_action)
@@ -751,6 +817,14 @@ class RGDOrchestrator:
         )
         runtime_budget_state = self.slow.get_runtime_budget_state()
         replay_cfg = dict(self.config.get("closed_loop_latency_replay", {}) or {})
+        replay_execution_available = replay_cfg.get(
+            "proposal_backed_execution_available"
+        )
+        execution_available = (
+            bool(replay_execution_available)
+            if replay_execution_available is not None
+            else bool(runtime_budget_state["llm_available"])
+        )
         configured_latency = None
         latency_source = None
         if "extra_latency_s" in replay_cfg:
@@ -766,7 +840,7 @@ class RGDOrchestrator:
                 or "runtime_config.rgd_predicted_slow_latency_s"
             )
         latency_context = build_slow_path_latency_context(
-            llm_available=runtime_budget_state["llm_available"],
+            llm_available=execution_available,
             llm_invoke_timeout_s=runtime_budget_state["llm_invoke_timeout_s"],
             short_horizon_seconds=float(max(0.2, float(rad_meta.get("prediction_horizon_s", principle.get("short_horizon_seconds", 0.8)) or 0.8))),
             state=state,
@@ -1075,6 +1149,8 @@ class RGDOrchestrator:
 
     def restore_policy_state(self, snapshot: Dict[str, Any]) -> None:
         """Restore a validated temporal policy state without touching config."""
+        if self._pending_slow_invocation is not None:
+            raise RuntimeError("cannot restore policy state while a slow request is live")
         normalized = validate_rgd_policy_state(
             snapshot,
             slow_call_budget=self._slow_call_budget,
@@ -1096,7 +1172,894 @@ class RGDOrchestrator:
         ]
         self._rad_controller.restore_policy_state(normalized["rad"])
 
+    def prepare_frame(self, frame: int) -> Optional[Dict[str, Any]]:
+        """Latch one terminal slow response at the start of a control frame."""
+        self._prepared_frame = int(frame)
+        pending = self._pending_slow_invocation
+        if pending is None:
+            self._release_ready_request_id = None
+            return None
+        request = pending.request
+        if str(request.episode_token) != self._episode_token:
+            raise RuntimeError("pending slow request belongs to a different episode")
+        if str(request.request_id) in self._dropped_request_ids:
+            raise RuntimeError("dropped slow request cannot become release-ready")
+        if int(frame) < int(request.release_frame) or not self.slow.is_ready(request):
+            return None
+        if pending.observed_frame is None:
+            pending.observed_frame = int(frame)
+            pending.observed_at_monotonic = time.perf_counter()
+            try:
+                decision = self.slow.poll(request)
+                if decision is None:
+                    pending.observed_frame = None
+                    pending.observed_at_monotonic = None
+                    return None
+                pending.terminal_decision = decision
+            except SlowPathUnavailableError as exc:
+                pending.terminal_failure_reason = str(
+                    getattr(exc, "failure_reason", exc)
+                )
+        self._release_ready_request_id = str(request.request_id)
+        return self.pending_release_descriptor()
+
+    def pending_release_descriptor(self) -> Optional[Dict[str, Any]]:
+        pending = self._pending_slow_invocation
+        if pending is None or self._release_ready_request_id != pending.request.request_id:
+            return None
+        request = pending.request
+        failure = str(pending.terminal_failure_reason or "")
+        outcome = (
+            "timeout"
+            if failure == "slow_request_timeout"
+            else "failure"
+            if failure
+            else "valid"
+        )
+        return {
+            "request_id": str(request.request_id),
+            "episode_token": str(request.episode_token),
+            "source_frame": int(request.source_frame),
+            "release_frame": int(request.release_frame),
+            "available_frame": int(
+                pending.observed_frame
+                if pending.observed_frame is not None
+                else request.release_frame
+            ),
+            "scheduled_steps": max(
+                0, int(request.release_frame) - int(request.source_frame)
+            ),
+            "response_outcome": outcome,
+            "native_async": True,
+        }
+
+    def pending_slow_requests(self) -> List[Dict[str, Any]]:
+        pending = self._pending_slow_invocation
+        if pending is None:
+            return []
+        request = pending.request
+        return [
+            {
+                "request_id": str(request.request_id),
+                "episode_token": str(request.episode_token),
+                "source_frame": int(request.source_frame),
+                "release_frame": int(request.release_frame),
+                "terminal_outcome": "pending",
+                "native_async": True,
+            }
+        ]
+
+    def cancel_pending_slow_request(self) -> bool:
+        pending = self._pending_slow_invocation
+        if pending is None:
+            return False
+        cancelled = self.slow.cancel(pending.request)
+        self._dropped_request_ids.add(str(pending.request.request_id))
+        self._pending_slow_invocation = None
+        self._release_ready_request_id = None
+        return bool(cancelled)
+
+    def end_episode(self, reason: str = "episode_end") -> List[Dict[str, Any]]:
+        """Drop any unresolved request and freeze this episode's async ledger."""
+        if self._episode_closed:
+            return []
+        self._episode_closed = True
+        pending = self._pending_slow_invocation
+        if pending is None:
+            return []
+        request = pending.request
+        cancelled = self.slow.cancel(request)
+        self._dropped_request_ids.add(str(request.request_id))
+        self._pending_slow_invocation = None
+        self._release_ready_request_id = None
+        return [
+            {
+                "request_id": str(request.request_id),
+                "episode_token": str(request.episode_token),
+                "source_frame": int(request.source_frame),
+                "release_frame": int(request.release_frame),
+                "terminal_outcome": "dropped_at_episode_end",
+                "drop_reason": str(reason or "episode_end"),
+                "future_cancelled": bool(cancelled),
+                "native_async": True,
+            }
+        ]
+
+    def _resolve_requested_route(
+        self, state: DrivingState, force_system: Optional[str]
+    ) -> Tuple[str, float, Optional[RouteAmbiguityProfile]]:
+        protocol_force = self._forced_route_system if force_system is None else None
+        if protocol_force in {"fast", "slow"} and self._rgd_signal_provider:
+            self._forced_route_system = None
+            try:
+                natural_system, route_score, route_ambiguity_profile = self._route_system(
+                    state, None
+                )
+            finally:
+                self._forced_route_system = protocol_force
+            self.stats["natural_route_system_before_protocol_force"] = natural_system
+            self.stats["route_reason"] = "forced_protocol_after_matched_route_state"
+            return protocol_force, route_score, route_ambiguity_profile
+        return self._route_system(state, force_system)
+
+    def _mark_async_route_override(self, reason: str) -> None:
+        self.stats["route_reason"] = str(reason)
+        gate = self.stats.get("recoverability_gate")
+        if isinstance(gate, dict):
+            gate["selected_system"] = "fast"
+            gate["route_reason"] = str(reason)
+            gate["resource_available"] = False
+
+    @staticmethod
+    def _set_async_lifecycle_defaults(decision: RGDDecision) -> None:
+        decision.stats.update(
+            {
+                "native_async_slow_path": True,
+                "slow_request_attempted": False,
+                "slow_request_valid_return": False,
+                "slow_request_failed": False,
+                "slow_request_pending": False,
+                "closed_loop_latency_issuance_event": False,
+                "closed_loop_latency_issued_request_id": "",
+                "closed_loop_latency_issued_response_outcome": "",
+                "closed_loop_latency_terminal_event": False,
+                "closed_loop_latency_terminal_request_id": "",
+                "closed_loop_latency_terminal_response_outcome": "",
+                "closed_loop_latency_response_sha256": "",
+                "closed_loop_latency_release_event": False,
+                "closed_loop_latency_timeout_event": False,
+                "closed_loop_latency_failure_event": False,
+                "closed_loop_release_action_unavailable": False,
+                "closed_loop_release_action_alignment_evaluated": False,
+                "closed_loop_release_action_alignment_pass": False,
+                "closed_loop_release_opportunity_rejected": False,
+            }
+        )
+
+    def _async_timing_fields(
+        self,
+        request: SlowRequest,
+        *,
+        terminal_frame: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        frequency = max(
+            1e-9, float_or_default(self.config.get("policy_frequency"), 10.0)
+        )
+        scheduled_steps = max(
+            0, int(request.release_frame) - int(request.source_frame)
+        )
+        predicted_seconds = max(
+            0.0,
+            float_or_default(
+                self.config.get("rgd_predicted_slow_latency_s"),
+                scheduled_steps / frequency,
+            ),
+        )
+        predicted_steps = max(0, int(math.ceil(predicted_seconds * frequency - 1e-12)))
+        terminal = terminal_frame is not None
+        realized_steps = (
+            max(0, int(terminal_frame) - int(request.source_frame))
+            if terminal
+            else -1
+        )
+        return {
+            "closed_loop_latency_contract_version": "native_async_wall_clock_v1",
+            "closed_loop_latency_source_system": "slow",
+            "closed_loop_latency_source_frame": int(request.source_frame),
+            "closed_loop_latency_delay_steps": int(scheduled_steps),
+            "closed_loop_latency_scheduled_steps": int(scheduled_steps),
+            "closed_loop_latency_scheduled_release_frame": int(request.release_frame),
+            "closed_loop_latency_policy_frequency_hz": float(frequency),
+            "closed_loop_latency_scheduled_seconds": float(
+                scheduled_steps / frequency
+            ),
+            "closed_loop_latency_predicted_steps": int(predicted_steps),
+            "closed_loop_latency_predicted_seconds": float(predicted_seconds),
+            "closed_loop_latency_realized_steps": int(realized_steps),
+            "closed_loop_latency_realized_seconds": (
+                float(realized_steps / frequency) if terminal else None
+            ),
+            "closed_loop_latency_realized_available": bool(terminal),
+            "closed_loop_latency_realized_source": (
+                "simulator_frame_delta" if terminal else "not_released"
+            ),
+            "closed_loop_latency_scripted_sample": False,
+        }
+
+    def _start_async_request(
+        self,
+        *,
+        state: DrivingState,
+        frame: int,
+        route_score: float,
+        route_ambiguity_profile: Optional[RouteAmbiguityProfile],
+    ) -> RGDDecision:
+        fast_decision = self._execute_fast(
+            state,
+            route_score,
+            fast_override_context=(
+                self._current_fast_override_context
+                if self._current_fast_incumbent_identity
+                else None
+            ),
+        )
+        if self._current_fast_incumbent_identity:
+            self._assert_current_fast_incumbent_match(
+                state=state,
+                observed_decision=fast_decision,
+                observed_source="async_query_fast_execution",
+            )
+        request_id = (
+            f"online:{self._episode_token}:{int(frame)}:"
+            f"{self._async_request_sequence:04d}"
+        )
+        self._async_request_sequence += 1
+        release_frame = int(frame) + int(self._async_min_release_frames)
+        request = self.slow.submit(
+            request_id=request_id,
+            episode_token=self._episode_token,
+            source_frame=int(frame),
+            release_frame=release_frame,
+            state=copy.deepcopy(state),
+            recoverability_context=copy.deepcopy(self._last_recoverability_context),
+        )
+        self._pending_slow_invocation = _PendingSlowInvocation(
+            request=request,
+            query_fast_action=int(fast_decision.action),
+            query_fast_rule=str(fast_decision.stats.get("rule_name") or "unknown"),
+            query_fast_identity_sha256=str(
+                self._current_fast_incumbent_identity.get("identity_sha256", "")
+            ),
+            query_recoverability_context=copy.deepcopy(
+                self._last_recoverability_context
+            ),
+        )
+        self._release_ready_request_id = None
+        self._set_async_lifecycle_defaults(fast_decision)
+        fast_decision.system_used = "slow"
+        fast_decision.route_label = "async_request_issued_fast_continuation"
+        fast_decision.ambiguity_profile = route_ambiguity_profile
+        fast_decision.reasoning = (
+            f"{fast_decision.reasoning} | slow request issued; fast command retained"
+        )
+        fast_decision.stats.update(
+            {
+                "slow_request_attempted": True,
+                "slow_request_pending": True,
+                "slow_reasoning_mode": "online_llm_async_pending",
+                "slow_reasoning_success": False,
+                "slow_reasoning_failure_reason": "",
+                "closed_loop_latency_request_id": request_id,
+                "slow_request_id": request_id,
+                "closed_loop_latency_issuance_event": True,
+                "closed_loop_latency_issued_request_id": request_id,
+                "closed_loop_latency_issued_response_outcome": "pending",
+                "closed_loop_latency_response_outcome": "pending",
+                "closed_loop_latency_terminal_outcome": "pending",
+                **self._async_timing_fields(request),
+                "query_state_fast_proposal_action": int(fast_decision.action),
+                "query_state_fast_proposal_rule": str(
+                    fast_decision.stats.get("rule_name") or "unknown"
+                ),
+                "query_state_fast_incumbent_identity_sha256": str(
+                    self._current_fast_incumbent_identity.get("identity_sha256", "")
+                ),
+                "query_state_fast_incumbent_identity_match": bool(
+                    self._current_fast_incumbent_identity
+                ),
+                "closed_loop_latency_hold_action": int(fast_decision.action),
+            }
+        )
+        return fast_decision
+
+    @staticmethod
+    def _action_costs(values: Dict[Any, Any]) -> Dict[int, float]:
+        costs: Dict[int, float] = {}
+        for raw_action, raw_cost in dict(values or {}).items():
+            try:
+                action = int(raw_action)
+                cost = float(raw_cost)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(cost):
+                costs[action] = cost
+        return costs
+
+    def evaluate_release_proposal(
+        self,
+        *,
+        state: DrivingState,
+        fast_action: int,
+        slow_action: int,
+        revalidation_enabled: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        """Evaluate a delayed proposal against the current Fast decision."""
+        replay_cfg = dict(self.config.get("closed_loop_latency_replay", {}) or {})
+        revalidation_cfg = dict(
+            replay_cfg.get("release_opportunity_revalidation", {}) or {}
+        )
+        enabled = bool(
+            revalidation_cfg.get("enable", True)
+            if revalidation_enabled is None
+            else revalidation_enabled
+        )
+        available = {int(action) for action in state.get_available_actions()}
+        mapped_slow_action = int(slow_action)
+        action_available = mapped_slow_action in available
+        assessment = dict(
+            self._last_recoverability_context.get(
+                "recoverability_assessment", {}
+            )
+            or {}
+        )
+        raw_feasible = {
+            int(action)
+            for action in list(
+                assessment.get("raw_feasible_alternative_actions", []) or []
+            )
+        }
+        a_pass = bool(
+            action_available
+            and (
+                not enabled
+                or (
+                    bool(assessment.get("domain_contract_pass", False))
+                    and bool(assessment.get("absolute_feasibility_pass", False))
+                    and bool(assessment.get("maneuver_breadth_pass", False))
+                    and mapped_slow_action in raw_feasible
+                )
+            )
+        )
+        h_pass = bool(
+            not enabled or assessment.get("corrective_headroom_pass", False)
+        )
+        n_pass = bool(not enabled or assessment.get("state_need_pass", False))
+        distinct = bool(mapped_slow_action != int(fast_action))
+
+        alignment_cfg = dict(
+            revalidation_cfg.get("action_cost_alignment", {}) or {}
+        )
+        alignment_enabled = bool(
+            enabled and alignment_cfg.get("enable", enabled)
+        )
+        costs = self._action_costs(
+            dict(self._last_rad_meta.get("action_recovery_costs", {}) or {})
+        )
+        observed_method_version = str(
+            self._last_rad_meta.get("method_version", "") or ""
+        )
+        observed_raw_cost_source = str(
+            self._last_rad_meta.get("raw_cost_source", "") or ""
+        )
+        required_method_version = str(
+            alignment_cfg.get("required_method_version", "") or ""
+        )
+        required_raw_cost_source = str(
+            alignment_cfg.get("required_raw_cost_source", "") or ""
+        )
+        method_version_pass = bool(
+            not required_method_version
+            or observed_method_version == required_method_version
+        )
+        raw_cost_source_pass = bool(
+            not required_raw_cost_source
+            or observed_raw_cost_source == required_raw_cost_source
+        )
+        cost_provenance_pass = bool(method_version_pass and raw_cost_source_pass)
+        fast_cost = costs.get(int(fast_action))
+        slow_cost = costs.get(mapped_slow_action)
+        margin = max(
+            0.0,
+            float_or_default(
+                alignment_cfg.get("cost_margin", alignment_cfg.get("margin", 0.0)),
+                0.0,
+            ),
+        )
+        alignment_evaluated = bool(
+            alignment_enabled
+            and cost_provenance_pass
+            and fast_cost is not None
+            and slow_cost is not None
+        )
+        alignment_pass = bool(
+            (not alignment_enabled)
+            or (
+                alignment_evaluated
+                and float(slow_cost) + margin <= float(fast_cost) + 1e-12
+            )
+        )
+        release_pass = bool(
+            action_available
+            and (
+                not enabled
+                or (
+                    a_pass
+                    and h_pass
+                    and n_pass
+                    and distinct
+                    and alignment_pass
+                )
+            )
+        )
+        selected_action = mapped_slow_action if release_pass else int(fast_action)
+        return {
+            "selected_action": int(selected_action),
+            "mapped_slow_action": int(mapped_slow_action),
+            "action_available": bool(action_available),
+            "revalidation_enabled": bool(enabled),
+            "a_pass": bool(a_pass),
+            "h_pass": bool(h_pass),
+            "n_pass": bool(n_pass),
+            "distinct": bool(distinct),
+            "alignment_enabled": bool(alignment_enabled),
+            "alignment_evaluated": bool(alignment_evaluated),
+            "alignment_pass": bool(alignment_pass),
+            "alignment_margin": float(margin),
+            "fast_cost": fast_cost,
+            "slow_cost": slow_cost,
+            "required_method_version": required_method_version,
+            "observed_method_version": observed_method_version,
+            "method_version_pass": bool(method_version_pass),
+            "required_raw_cost_source": required_raw_cost_source,
+            "observed_raw_cost_source": observed_raw_cost_source,
+            "raw_cost_source_pass": bool(raw_cost_source_pass),
+            "cost_provenance_pass": bool(cost_provenance_pass),
+            "raw_cost_complete": bool(
+                self._last_rad_meta.get("raw_cost_complete", False)
+            ),
+            "release_pass": bool(release_pass),
+        }
+
+    def _complete_async_release(
+        self,
+        *,
+        state: DrivingState,
+        frame: int,
+        route_score: float,
+        route_ambiguity_profile: Optional[RouteAmbiguityProfile],
+    ) -> RGDDecision:
+        pending = self._pending_slow_invocation
+        if pending is None:
+            raise RuntimeError("asynchronous release requested without a pending request")
+        request = pending.request
+        if pending.observed_frame is None:
+            raise RuntimeError("asynchronous release was not latched at frame start")
+        if pending.terminal_failure_reason:
+            failure_reason = str(pending.terminal_failure_reason)
+            outcome = (
+                "timeout"
+                if failure_reason == "slow_request_timeout"
+                else "failure"
+            )
+            decision = self._execute_fast(
+                state,
+                route_score,
+                fast_override_context=(
+                    self._current_fast_override_context
+                    if self._current_fast_incumbent_identity
+                    else None
+                ),
+            )
+            self._set_async_lifecycle_defaults(decision)
+            decision.route_label = "async_slow_failure_fast_fallback"
+            decision.ambiguity_profile = route_ambiguity_profile
+            decision.stats.update(
+                {
+                    **self._async_timing_fields(request, terminal_frame=frame),
+                    "slow_reasoning_mode": "online_llm_async_failure",
+                    "slow_reasoning_success": False,
+                    "slow_reasoning_failure_reason": failure_reason,
+                    "slow_request_failed": True,
+                    "closed_loop_latency_request_id": str(request.request_id),
+                    "closed_loop_latency_terminal_event": True,
+                    "closed_loop_latency_terminal_request_id": str(
+                        request.request_id
+                    ),
+                    "closed_loop_latency_terminal_response_outcome": outcome,
+                    "closed_loop_latency_response_outcome": outcome,
+                    "closed_loop_latency_terminal_outcome": outcome,
+                    "closed_loop_latency_timeout_event": outcome == "timeout",
+                    "closed_loop_latency_failure_event": outcome == "failure",
+                    "slow_response_wall_latency_s": max(
+                        0.0,
+                        float(
+                            pending.observed_at_monotonic or time.perf_counter()
+                        )
+                        - request.submitted_at_monotonic,
+                    ),
+                }
+            )
+            # Commit consumption only after the fallback decision and complete
+            # terminal metadata have been built.  A transient Fast-path error
+            # must not silently discard the latched terminal request.
+            self._pending_slow_invocation = None
+            self._release_ready_request_id = None
+            return decision
+
+        slow_decision = pending.terminal_decision
+        if slow_decision is None:
+            raise RuntimeError("latched valid response has no slow decision")
+        fast_comparator = self._execute_fast(
+            state,
+            float(route_score),
+            fast_override_context=(
+                self._current_fast_override_context
+                if self._current_fast_incumbent_identity
+                else None
+            ),
+        )
+        if self._current_fast_incumbent_identity:
+            self._assert_current_fast_incumbent_match(
+                state=state,
+                observed_decision=fast_comparator,
+                observed_source="async_release_fast_comparator",
+            )
+
+        release = self.evaluate_release_proposal(
+            state=state,
+            fast_action=int(fast_comparator.action),
+            slow_action=int(slow_decision.action),
+        )
+        slow_meta = dict(getattr(slow_decision, "stats", {}) or {})
+        response_identity_payload = {
+            "action": int(slow_decision.action),
+            "confidence": float(slow_decision.confidence),
+            "reasoning": str(slow_decision.reasoning),
+            "response": str(slow_meta.get("slow_response_text", "") or ""),
+        }
+        response_sha256 = hashlib.sha256(
+            json.dumps(
+                response_identity_payload,
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
+        mapped_slow_action = int(release["mapped_slow_action"])
+        release_pass = bool(release["release_pass"])
+
+        if release_pass:
+            decision = RGDDecision(
+                action=mapped_slow_action,
+                reasoning=str(slow_decision.reasoning),
+                confidence=float(slow_decision.confidence),
+                system_used="slow_release",
+                route_label="async_release_authorized",
+                route_score=float(route_score),
+                ambiguity_profile=route_ambiguity_profile,
+                thinking_steps=list(getattr(slow_decision, "thinking_steps", [])),
+                stats={},
+            )
+        else:
+            decision = fast_comparator
+            decision.route_label = "async_release_rejected_fast_retained"
+            decision.ambiguity_profile = route_ambiguity_profile
+            decision.reasoning = (
+                f"{decision.reasoning} | delayed slow proposal rejected at release"
+            )
+
+        self._pending_slow_invocation = None
+        self._release_ready_request_id = None
+        self._set_async_lifecycle_defaults(decision)
+        decision.stats.update(slow_meta)
+        decision.stats.update(
+            {
+                **self._async_timing_fields(request, terminal_frame=frame),
+                "native_async_slow_path": True,
+                "slow_request_attempted": False,
+                "slow_request_valid_return": True,
+                "slow_request_failed": False,
+                "slow_request_pending": False,
+                "slow_reasoning_mode": "online_llm_async_release",
+                "slow_reasoning_success": True,
+                "slow_reasoning_failure_reason": "",
+                "closed_loop_latency_request_id": str(request.request_id),
+                "closed_loop_latency_response_outcome": "valid",
+                "closed_loop_latency_terminal_outcome": "valid",
+                "closed_loop_latency_terminal_event": True,
+                "closed_loop_latency_terminal_request_id": str(request.request_id),
+                "closed_loop_latency_terminal_response_outcome": "valid",
+                "closed_loop_latency_response_sha256": response_sha256,
+                "closed_loop_latency_release_event": True,
+                "slow_response_action": int(slow_decision.action),
+                "slow_response_confidence": float(slow_decision.confidence),
+                "slow_response_reasoning": str(slow_decision.reasoning),
+                "slow_response_wall_latency_s": max(
+                    0.0,
+                    float(request.completed_at_monotonic or time.perf_counter())
+                    - request.submitted_at_monotonic,
+                ),
+                "query_state_fast_proposal_action": int(
+                    pending.query_fast_action
+                ),
+                "query_state_fast_proposal_rule": str(pending.query_fast_rule),
+                "query_state_fast_incumbent_identity_sha256": str(
+                    pending.query_fast_identity_sha256
+                ),
+                "query_state_slow_pre_guard_action": int(slow_decision.action),
+                "query_state_slow_released_action": int(mapped_slow_action),
+                "query_state_route_divergence": bool(
+                    int(mapped_slow_action) != int(pending.query_fast_action)
+                ),
+                "closed_loop_execution_state_fast_action": int(
+                    fast_comparator.action
+                ),
+                "closed_loop_released_slow_action": int(mapped_slow_action),
+                "closed_loop_release_action_unavailable": not bool(
+                    release["action_available"]
+                ),
+                "closed_loop_release_revalidation_enabled": bool(
+                    release["revalidation_enabled"]
+                ),
+                "closed_loop_release_revalidation_a_pass": bool(release["a_pass"]),
+                "closed_loop_release_revalidation_h_pass": bool(release["h_pass"]),
+                "closed_loop_release_revalidation_n_pass": bool(release["n_pass"]),
+                "closed_loop_release_revalidation_all_pass": bool(
+                    release["a_pass"] and release["h_pass"] and release["n_pass"]
+                ),
+                "closed_loop_release_action_alignment_evaluated": bool(
+                    release["alignment_evaluated"]
+                ),
+                "closed_loop_release_action_alignment_pass": bool(
+                    release["alignment_pass"]
+                ),
+                "closed_loop_release_action_alignment_margin": float(
+                    release["alignment_margin"]
+                ),
+                "closed_loop_release_action_alignment_fast_cost": release["fast_cost"],
+                "closed_loop_release_action_alignment_slow_cost": release["slow_cost"],
+                "closed_loop_release_action_alignment_required_method_version": str(
+                    release["required_method_version"]
+                ),
+                "closed_loop_release_action_alignment_observed_method_version": str(
+                    release["observed_method_version"]
+                ),
+                "closed_loop_release_action_alignment_method_version_pass": bool(
+                    release["method_version_pass"]
+                ),
+                "closed_loop_release_action_alignment_required_raw_cost_source": str(
+                    release["required_raw_cost_source"]
+                ),
+                "closed_loop_release_action_alignment_observed_raw_cost_source": str(
+                    release["observed_raw_cost_source"]
+                ),
+                "closed_loop_release_action_alignment_raw_cost_source_pass": bool(
+                    release["raw_cost_source_pass"]
+                ),
+                "closed_loop_release_action_alignment_cost_provenance_pass": bool(
+                    release["cost_provenance_pass"]
+                ),
+                "closed_loop_release_action_alignment_raw_cost_complete": bool(
+                    release["raw_cost_complete"]
+                ),
+                "closed_loop_release_action_alignment_fast_effective_action": int(
+                    fast_comparator.action
+                ),
+                "closed_loop_release_action_alignment_slow_effective_action": int(
+                    mapped_slow_action
+                ),
+                "closed_loop_release_action_distinct": bool(release["distinct"]),
+                "closed_loop_release_opportunity_rejected": not release_pass,
+                "closed_loop_release_guard_pass": release_pass,
+                "release_fast_comparator_action": int(fast_comparator.action),
+                "release_selected_action": int(decision.action),
+                "release_action_comparison_stage": (
+                    "post_release_guard_pre_final_safety_projection"
+                ),
+            }
+        )
+        return decision
+
+    def _decide_async(
+        self,
+        state: DrivingState,
+        force_system: Optional[str] = None,
+    ) -> RGDDecision:
+        start_time = time.perf_counter()
+        self._current_fast_incumbent_identity = {}
+        self._current_fast_override_context = {}
+        frame = int(
+            getattr(
+                state,
+                "_runtime_frame_id",
+                int(self.stats.get("decision_count", 0) or 0),
+            )
+        )
+        if self._episode_closed:
+            raise RuntimeError("cannot decide after the episode ledger is closed")
+        if self._prepared_frame != frame:
+            self.prepare_frame(frame)
+        system, route_score, route_ambiguity_profile = self._resolve_requested_route(
+            state, force_system
+        )
+        if self._slow_call_cooldown_remaining > 0:
+            self._slow_call_cooldown_remaining -= 1
+
+        pending = self._pending_slow_invocation
+        if pending is not None:
+            if self._release_ready_request_id == pending.request.request_id:
+                decision = self._complete_async_release(
+                    state=state,
+                    frame=frame,
+                    route_score=route_score,
+                    route_ambiguity_profile=route_ambiguity_profile,
+                )
+            else:
+                self._mark_async_route_override("slow_suppressed_pending_request")
+                decision = self._execute_fast(
+                    state,
+                    route_score,
+                    fast_override_context=(
+                        self._current_fast_override_context
+                        if self._current_fast_incumbent_identity
+                        else None
+                    ),
+                )
+                self._set_async_lifecycle_defaults(decision)
+                decision.ambiguity_profile = route_ambiguity_profile
+                decision.stats.update(
+                    {
+                        **self._async_timing_fields(pending.request),
+                        "slow_request_pending": True,
+                        "closed_loop_latency_request_id": str(
+                            pending.request.request_id
+                        ),
+                        "closed_loop_latency_response_outcome": "pending",
+                        "closed_loop_latency_terminal_outcome": "pending",
+                        "closed_loop_latency_pending_age_steps": max(
+                            0, frame - int(pending.request.source_frame)
+                        ),
+                    }
+                )
+        else:
+            if system == "slow":
+                budget_exhausted = bool(
+                    self._slow_call_budget is not None
+                    and self._slow_call_attempts >= self._slow_call_budget
+                )
+                cooldown_active = self._slow_call_cooldown_remaining > 0
+                source_window_closed = bool(
+                    self._async_latest_source_frame is not None
+                    and frame > self._async_latest_source_frame
+                )
+                if budget_exhausted or cooldown_active or source_window_closed:
+                    reason = (
+                        "budget_exhausted"
+                        if budget_exhausted
+                        else (
+                            "cooldown_active"
+                            if cooldown_active
+                            else "episode_response_window_closed"
+                        )
+                    )
+                    self._mark_async_route_override(f"slow_suppressed_{reason}")
+                    self.stats["slow_call_suppressed"] = int(
+                        self.stats.get("slow_call_suppressed", 0) or 0
+                    ) + 1
+                    decision = self._execute_fast(
+                        state,
+                        route_score,
+                        fast_override_context=(
+                            self._current_fast_override_context
+                            if self._current_fast_incumbent_identity
+                            else None
+                        ),
+                    )
+                    self._set_async_lifecycle_defaults(decision)
+                else:
+                    try:
+                        decision = self._start_async_request(
+                            state=state,
+                            frame=frame,
+                            route_score=route_score,
+                            route_ambiguity_profile=route_ambiguity_profile,
+                        )
+                    except SlowPathUnavailableError as exc:
+                        decision = self._execute_slow_unavailable_recovery(
+                            state=state,
+                            route_score=route_score,
+                            route_ambiguity_profile=route_ambiguity_profile,
+                            failure_reason=str(getattr(exc, "failure_reason", exc)),
+                        )
+                    else:
+                        self._slow_call_attempts += 1
+                        self._slow_call_cooldown_remaining = (
+                            self._slow_call_cooldown_frames + 1
+                        )
+            else:
+                decision = self._execute_fast(
+                    state,
+                    route_score,
+                    fast_override_context=(
+                        self._current_fast_override_context
+                        if self._current_fast_incumbent_identity
+                        else None
+                    ),
+                )
+                self._set_async_lifecycle_defaults(decision)
+                decision.ambiguity_profile = route_ambiguity_profile
+
+        self.stats["slow_call_attempts"] = int(self._slow_call_attempts)
+        self.stats["slow_call_budget"] = self._slow_call_budget
+        self.stats["slow_call_budget_remaining"] = (
+            None
+            if self._slow_call_budget is None
+            else max(0, self._slow_call_budget - self._slow_call_attempts)
+        )
+        self.stats["slow_request_pending"] = bool(
+            self._pending_slow_invocation is not None
+        )
+        if decision.ambiguity_profile is not None:
+            export_route_ambiguity_to_decision(decision)
+        if self._last_route_feature_vec is not None:
+            decision.stats["route_feature_vec"] = self._last_route_feature_vec.tolist()
+        bridge_orchestrator_stats_into_decision(self.stats, decision)
+        decision.latency_ms = (time.perf_counter() - start_time) * 1000.0
+        self.stats["total_latency_ms"] += decision.latency_ms
+        self.stats["decision_count"] += 1
+        return decision
+
     def decide(
+        self,
+        state: DrivingState,
+        force_system: Optional[str] = None,
+    ) -> RGDDecision:
+        """Make one decision under the configured blocking or asynchronous contract."""
+        if bool(getattr(self, "_async_slow_path_enabled", False)):
+            return self._decide_async(state, force_system=force_system)
+        return self._decide_blocking(state, force_system=force_system)
+
+    def record_external_slow_request(self) -> None:
+        """Synchronize budget state for an authenticated scripted request.
+
+        Proposal replay supplies the slow response itself, but it must consume
+        the same request budget and cooldown as an online slow invocation.  The
+        caller invokes this hook after the current Fast decision, matching the
+        point at which the blocking path normally commits a request.
+        """
+        if self._episode_closed:
+            raise RuntimeError("cannot record a request after the episode ledger is closed")
+        if self._async_slow_path_enabled:
+            raise RuntimeError("external request accounting is unavailable in native async mode")
+        if self._pending_slow_invocation is not None:
+            raise RuntimeError("cannot record an external request while a native request is pending")
+        if self._slow_call_budget is not None and self._slow_call_attempts >= self._slow_call_budget:
+            raise RuntimeError("external slow request exceeds the configured budget")
+        if self._slow_call_cooldown_remaining > 0:
+            raise RuntimeError("external slow request violates the configured cooldown")
+
+        self._slow_call_attempts += 1
+        self._slow_call_cooldown_remaining = self._slow_call_cooldown_frames + 1
+        self.stats["slow_call_attempts"] = int(self._slow_call_attempts)
+        self.stats["slow_call_budget"] = self._slow_call_budget
+        self.stats["slow_call_budget_remaining"] = (
+            None
+            if self._slow_call_budget is None
+            else max(0, self._slow_call_budget - self._slow_call_attempts)
+        )
+
+    def _decide_blocking(
         self,
         state: DrivingState,
         force_system: Optional[str] = None,
@@ -1229,6 +2192,9 @@ class RGDOrchestrator:
             "slow_reasoning_mode": "fast_fallback",
             "slow_reasoning_success": False,
             "slow_reasoning_failure_reason": str(failure_reason),
+            "slow_request_attempted": True,
+            "slow_request_valid_return": False,
+            "slow_request_failed": True,
             "llm_backed_execution_available": False,
             "slow_unavailable_recovery": True,
             "slow_failure_fallback_policy": "identical_fast_policy",

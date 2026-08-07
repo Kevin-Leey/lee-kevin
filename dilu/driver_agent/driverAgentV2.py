@@ -14,6 +14,7 @@ from typing import Any, Dict, Optional, Tuple
 from dilu.driver_agent.policy_state import (
     DRIVER_POLICY_STATE_SCHEMA,
     validate_driver_policy_state,
+    validate_fast_policy_state,
 )
 from dilu.driver_agent.reasoning.fast_thinker import FastThinker
 from dilu.driver_agent.reasoning.rgd_core import RGDOrchestrator
@@ -53,6 +54,8 @@ class DriverAgentV2:
         self.orchestrator = RGDOrchestrator(
             self.fast_thinker, self.slow_thinker, self.config
         )
+        self._episode_ended = False
+        self._closed = False
 
     def _prepare_runtime_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """Bind latency units after the simulator instance has been selected."""
@@ -68,6 +71,8 @@ class DriverAgentV2:
         return resolved
 
     def decide(self, state: Any) -> Tuple[int, str, Dict[str, Any]]:
+        if self._episode_ended:
+            raise RuntimeError("cannot decide after end_episode()")
         decision = self.orchestrator.decide(state)
         metadata = dict(decision.stats or {})
         metadata.setdefault("fast_rule_name", metadata.get("rule_name", "none"))
@@ -87,17 +92,59 @@ class DriverAgentV2:
     def record_executed_action(self, action: int) -> None:
         self.fast_thinker.record_executed_action(int(action))
 
-    def snapshot_policy_state(self) -> Dict[str, Any]:
+    def uses_native_async_policy_pacing(self) -> bool:
+        """Return whether this agent executes the live asynchronous RGD path."""
+        return bool(
+            self.orchestrator._async_slow_path_enabled
+            and self.orchestrator._forced_route_system != "fast"
+        )
+
+    def _snapshot_policy_state_unchecked(self) -> Dict[str, Any]:
         return {
             "schema": DRIVER_POLICY_STATE_SCHEMA,
             "fast": self.fast_thinker.snapshot_policy_state(),
             "orchestrator": self.orchestrator.snapshot_policy_state(),
         }
 
+    def snapshot_policy_state(self) -> Dict[str, Any]:
+        if self.pending_slow_requests():
+            raise RuntimeError(
+                "cannot create a standalone policy snapshot while a slow request is live"
+            )
+        return self._snapshot_policy_state_unchecked()
+
+    def snapshot_release_policy_state(self) -> Dict[str, Any]:
+        """Capture replayable policy state beside a request-bound descriptor."""
+        return self._snapshot_policy_state_unchecked()
+
     def restore_policy_state(self, snapshot: Dict[str, Any]) -> None:
+        if self.pending_slow_requests():
+            raise RuntimeError("cannot restore policy state while a slow request is live")
         normalized = validate_driver_policy_state(snapshot)
-        self.fast_thinker.restore_policy_state(normalized["fast"])
+        validate_fast_policy_state(
+            normalized["fast"],
+            expected_capacity=self.fast_thinker.action_history_capacity,
+        )
         self.orchestrator.restore_policy_state(normalized["orchestrator"])
+        self.fast_thinker.restore_policy_state(normalized["fast"])
+
+    def prepare_frame(self, frame: int) -> Optional[Dict[str, Any]]:
+        if self._episode_ended:
+            return None
+        return self.orchestrator.prepare_frame(int(frame))
+
+    def pending_slow_requests(self) -> list[Dict[str, Any]]:
+        return self.orchestrator.pending_slow_requests()
+
+    def end_episode(self, reason: str = "episode_end") -> list[Dict[str, Any]]:
+        if self._episode_ended:
+            return []
+        self._episode_ended = True
+        return self.orchestrator.end_episode(str(reason))
 
     def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        self.end_episode("agent_closed")
         self.slow_thinker.shutdown(wait=False)

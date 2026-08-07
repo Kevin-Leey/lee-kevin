@@ -91,7 +91,12 @@ def capture_release_snapshot(
     pending_request: Optional[Mapping[str, Any]] = None,
 ) -> ReleaseSnapshot:
     """Capture an authenticated replay target before a queued release is handled."""
-    policy_state = agent.snapshot_policy_state()
+    release_snapshotter = getattr(agent, "snapshot_release_policy_state", None)
+    policy_state = (
+        release_snapshotter()
+        if callable(release_snapshotter)
+        else agent.snapshot_policy_state()
+    )
     request = dict(pending_request or {})
     snapshot = ReleaseSnapshot(
         frame=int(frame),
@@ -224,4 +229,3 @@ def save_release_snapshot_bundle(
     os.replace(str(bundle_tmp), str(bundle_path))
     os.replace(str(manifest_tmp), str(manifest_path))
     return bundle_path, manifest_path, bundle_sha256
-

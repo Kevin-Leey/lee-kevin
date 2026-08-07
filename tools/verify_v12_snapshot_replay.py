@@ -115,7 +115,7 @@ def verify_seed(
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--trace-root", required=True, type=Path)
-    parser.add_argument("--protocol", default=REPO_ROOT / "formal_protocol_v12.yaml", type=Path)
+    parser.add_argument("--protocol", default=REPO_ROOT / "formal_protocol.yaml", type=Path)
     parser.add_argument("--seed-start", required=True, type=int)
     parser.add_argument("--seeds", required=True, type=int)
     parser.add_argument("--horizon", default=20, type=int)

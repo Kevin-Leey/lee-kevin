@@ -411,7 +411,7 @@ def test_selected_request_missing_id_never_borrows_same_frame_issuance_id():
     assert "new-valid" not in episode["_latency_request_ids"]
 
 
-def test_zero_delay_request_lifecycle_is_independent_of_unrelated_pending_queue():
+def test_zero_delay_request_is_suppressed_by_unrelated_pending_queue():
     cfg = _cfg()
     cfg["capture_release_snapshots_online"] = False
     cfg["require_release_snapshot_on_release"] = False
@@ -467,12 +467,12 @@ def test_zero_delay_request_lifecycle_is_independent_of_unrelated_pending_queue(
         cfg=cfg,
     )
     assert explicit_action == 1
-    assert explicit_meta["closed_loop_latency_issuance_event"] is True
+    assert explicit_meta["closed_loop_latency_issuance_event"] is False
     assert explicit_meta["closed_loop_latency_terminal_event"] is False
     assert explicit_meta["closed_loop_latency_terminal_outcome"] == "pending"
     assert [
         item["request_id"] for item in episode["latency_replay_queue"]
-    ] == ["future-timeout", "zero-explicit"]
+    ] == ["future-timeout"]
 
     release_meta = {"system_used": "fast"}
     released = _apply_closed_loop_latency_replay(
@@ -482,9 +482,9 @@ def test_zero_delay_request_lifecycle_is_independent_of_unrelated_pending_queue(
         episode_state=episode,
         cfg=cfg,
     )
-    assert released == 4
-    assert release_meta["closed_loop_latency_terminal_request_id"] == "zero-explicit"
-    assert release_meta["closed_loop_latency_release_event"] is True
+    assert released == 2
+    assert release_meta["closed_loop_latency_terminal_event"] is False
+    assert release_meta["closed_loop_latency_release_event"] is False
     assert [
         item["request_id"] for item in episode["latency_replay_queue"]
     ] == ["future-timeout"]

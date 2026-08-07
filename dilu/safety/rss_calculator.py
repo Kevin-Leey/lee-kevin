@@ -132,7 +132,7 @@ class RSSCalculator:
             return proposed, "RSS_DCBF_PROPOSED_PROJECTS_SAFE", False
 
         for candidate in self._override_order(proposed, available):
-            if candidate == proposed:
+            if candidate == proposed or candidate not in available:
                 continue
             if self._action_is_safe(state, candidate):
                 return candidate, f"RSS_DCBF_OVERRIDE_{candidate}", True

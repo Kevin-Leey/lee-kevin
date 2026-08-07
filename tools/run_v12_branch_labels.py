@@ -1826,16 +1826,15 @@ def _validate_v12_protocol(
     epsilon: float,
 ) -> str:
     protocol = load_formal_protocol(protocol_path)
-    _require(int(protocol.get("protocol_version", -1)) == 12, "branch labels require protocol_version 12")
     submission = dict(protocol.get("tvt_submission_contract", {}) or {})
     _require(
-        str(submission.get("rgd_method_version", "") or "") == METHOD_VERSION,
-        "branch protocol method version drift",
+        str(submission.get("query_gate_method_version", "") or "") == METHOD_VERSION,
+        "branch query-gate method version drift",
     )
     _require(
-        str(submission.get("mechanism_evaluation_method_version", "") or "")
-        == METHOD_VERSION,
-        "branch mechanism method version drift",
+        METHOD_VERSION
+        in str(submission.get("mechanism_evaluation_compatibility", "") or ""),
+        "branch mechanism compatibility drift",
     )
     rollout = dict(submission.get("release_rollout", {}) or {})
     _require(int(rollout.get("horizon_steps", -1)) == int(horizon), "branch horizon differs from v12 protocol")
@@ -1984,7 +1983,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--target-events", type=Path, required=True)
     parser.add_argument("--target-manifest", type=Path, required=True)
     parser.add_argument(
-        "--protocol", type=Path, default=Path("formal_protocol_v12.yaml")
+        "--protocol", type=Path, default=Path("formal_protocol.yaml")
     )
     parser.add_argument(
         "--floor-overlay",

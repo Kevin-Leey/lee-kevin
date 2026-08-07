@@ -21,6 +21,8 @@ import json
 import math
 import os
 import sys
+import tempfile
+import uuid
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -395,8 +397,34 @@ def _run_branch(
     horizon: int,
     gamma: float,
 ) -> Dict[str, Any]:
+    database = Path(tempfile.gettempdir()) / (
+        f"rgd_release_rollout_{os.getpid()}_{uuid.uuid4().hex}.db"
+    )
+    try:
+        return _run_branch_with_database(
+            snapshot,
+            cfg,
+            seed,
+            raw_action,
+            horizon,
+            gamma,
+            database,
+        )
+    finally:
+        database.unlink(missing_ok=True)
+
+
+def _run_branch_with_database(
+    snapshot: ReleaseSnapshot,
+    cfg: Dict[str, Any],
+    seed: int,
+    raw_action: Optional[int],
+    horizon: int,
+    gamma: float,
+    database: Path,
+) -> Dict[str, Any]:
     env = copy.deepcopy(snapshot.env)
-    scenario = create_scenario(env, "highway-v0", seed, None)
+    scenario = create_scenario(env, "highway-v0", seed, str(database))
     scenario.scenario_type = "highway"
     agent = FastBranchAgent(
         cfg,

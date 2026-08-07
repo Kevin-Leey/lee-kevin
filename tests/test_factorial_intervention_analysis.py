@@ -298,6 +298,48 @@ class InterventionEventContractTests(unittest.TestCase):
         self.assertEqual(row["selection_stage_primitive_distinct"], "")
         self.assertEqual(row["candidate_evaluable"], 0)
 
+    def test_legacy_presafety_fast_command_may_project_to_another_action(self):
+        snapshot = SimpleNamespace(
+            frame=10,
+            source_frame=4,
+            request_id="request",
+            snapshot_identity_sha256="snapshot-id",
+        )
+        baseline = _branch(effective_action=4, target_speed=18.0, utility=0.1)
+        candidate = _branch(effective_action=4, target_speed=18.0, utility=0.2)
+        event = {
+            "frame": 10,
+            "closed_loop_latency_source_frame": 4,
+            "closed_loop_release_snapshot_identity_sha256": "snapshot-id",
+            "closed_loop_released_slow_action": 4,
+            "closed_loop_execution_state_fast_action": 1,
+            "closed_loop_latency_executed_action": 4,
+            "closed_loop_release_opportunity_rejected": False,
+            "closed_loop_release_action_unavailable": False,
+        }
+
+        with mock.patch.object(
+            analyzer,
+            "_run_branch",
+            side_effect=(baseline, candidate),
+        ):
+            row = analyzer._event_rollout_row(
+                arm="full",
+                seed=1,
+                request_id="request",
+                event=event,
+                snapshot=snapshot,
+                cfg={},
+                horizon=20,
+                gamma=0.99,
+                epsilon=0.02,
+                legacy_v2=True,
+            )
+
+        self.assertEqual(row["fast_action"], 1)
+        self.assertEqual(row["candidate_effective_action"], 4)
+        self.assertEqual(row["first_step_actuator_distinct"], 0)
+
     def test_unavailable_flag_requires_matched_replay_non_evaluability(self):
         snapshot = SimpleNamespace(
             frame=10,

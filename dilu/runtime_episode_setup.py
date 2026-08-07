@@ -382,13 +382,40 @@ def create_episode_recorders(ep: int, seed: int, ep_dir: str, cfg: Dict[str, Any
         1.0,
     )
     step_seconds = 1.0 / policy_frequency
-    success_completion_threshold = float(cfg.get("success_completion_threshold", 0.95) or 0.95)
+    expected_total_frames = None
+    if cfg.get("enable_physical_metrics", False):
+        explicit_expected_frames = cfg.get(
+            "expected_total_frames", cfg.get("expected_policy_steps")
+        )
+        if explicit_expected_frames is not None:
+            if isinstance(explicit_expected_frames, bool):
+                raise ValueError("expected_total_frames must be a positive integer")
+            numeric_expected_frames = float(explicit_expected_frames)
+            if not math.isfinite(numeric_expected_frames) or not numeric_expected_frames.is_integer():
+                raise ValueError("expected_total_frames must be a positive integer")
+            expected_total_frames = int(numeric_expected_frames)
+        else:
+            duration = float(
+                resolve_env_value(cfg, "simulation_duration", env_type, 0.0) or 0.0
+            )
+            expected_total_frames = (
+                int(math.ceil(duration - 1e-12))
+                if env_type.startswith("metadrive-")
+                else int(math.ceil(duration * policy_frequency - 1e-12))
+            )
+        if expected_total_frames <= 0:
+            raise ValueError("physical metrics require a positive expected_total_frames")
+    threshold_value = cfg.get("success_completion_threshold", 0.95)
+    success_completion_threshold = float(
+        0.95 if threshold_value is None else threshold_value
+    )
     success_metric_mode = str(cfg.get("success_metric_mode", "completion_threshold") or "completion_threshold")
     physical_recorder = PhysicalMetricsRecorder(
         ep,
         seed,
         ep_dir,
         step_seconds=step_seconds,
+        expected_total_frames=expected_total_frames,
         success_completion_threshold=success_completion_threshold,
         success_metric_mode=success_metric_mode,
         env_type=env_type,
