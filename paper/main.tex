@@ -1,9 +1,10 @@
-% Last modified: 2026-08-05 21:27 (Asia/Shanghai) - refine terminology and evidence alignment.
+% Last modified: 2026-08-09 (Asia/Shanghai) - add matched release-validation evidence and refine presentation.
 \documentclass[letterpaper,journal]{IEEEtran}
 
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{booktabs}
 \usepackage{graphicx}
+\usepackage{dblfloatfix}
 \usepackage{microtype}
 \usepackage{array}
 \usepackage{multirow}
@@ -35,24 +36,26 @@
 \bstctlcite{bst:etal}
 
 \begin{abstract}
-Large language models can provide deliberative reasoning for autonomous
-driving, but inference latency separates the query state from the state at
-which a response becomes available. Existing asynchronous designs preserve a
-fast control stream during inference, but deciding whether a delayed proposal
-should influence the current command remains a separate runtime decision. This
-paper presents Recoverability-Gated Deliberation~(RGD), a two-stage framework
-for slow-reasoner admission and release validation. At query time, RGD admits
-slow requests based on delay feasibility, action support, recovery-cost
-advantage, and scene demand. At release, RGD maps the returned proposal in the
-observed state and accepts it only when it passes state checks, differs from
-the contemporaneous fast action, and satisfies the recovery-cost condition. We
-also introduce Recoverable Value of Deliberation~(R-VoD), an offline
-matched-rollout diagnostic of the corrective opportunity retained at release.
-Experiments in highway-env evaluate controlled delays, selective invocation,
-response traces, and backend substitution; a zero-delay MetaDrive study tests
-transfer of the common action interface. The results show that RGD preserves
-fast-path continuity and permits a delayed proposal to influence control only
-after it satisfies the release contract.
+Large language models provide deliberative reasoning for autonomous driving,
+but inference latency separates the query state from the state in which a
+response becomes available. Although asynchronous systems preserve fast
+control during inference, a delayed proposal must still be evaluated against
+the current traffic state and control command. This paper presents
+Recoverability-Gated Deliberation~(RGD), a two-stage framework for selective
+slow-reasoner admission and release validation. At query time, RGD admits a
+request only when delay feasibility, action support, recovery-cost advantage,
+and scene demand jointly indicate a useful deliberation opportunity. At
+release, the returned proposal is remapped in the observed state and authorized
+only after current-state, action-distinctness, and recovery-cost checks. We
+further introduce Recoverable Value of Deliberation~(R-VoD), an offline
+matched-rollout diagnostic that measures the corrective opportunity retained
+at release. Closed-loop experiments evaluate paired allocation policies,
+controlled delays, component effects, matched release-state interventions,
+reasoner substitution, and simulator adapters. The results show that RGD
+substantially reduces slow-path requests relative to continual and random
+invocation while preserving paired task outcomes. Matched rollouts further show
+that release validation retains the corrective intervention while filtering
+harmful or negligible delayed proposals.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -68,13 +71,13 @@ large language models, recoverability, selective computation.
 retrieval, and high-level decision making in autonomous driving systems
 \cite{wen2023dilu,xu2024drivegpt4,shao2024lmdrive,sima2024drivelm,
  mao2023gptdriver,tvtVLNavigationCAV2025,tvtDrivingKnowledge2026,xin2026netroller}.
-These capabilities provide semantic context and long-horizon intent beyond
-reactive policies. However, closed-loop deployment introduces a
-release-time mismatch: a reasoning request is issued from one traffic
-observation, while its proposal becomes available in a later state. A
-high-frequency controller can maintain continuous vehicle control while a
-deliberative model runs asynchronously, but the system must still decide
-whether the delayed proposal should influence the current command.
+These models provide semantic context and long-horizon intent beyond reactive
+policies. Closed-loop deployment, however, introduces a release-time mismatch:
+a reasoning request is issued from one traffic observation, whereas its
+proposal becomes available in a later state. A high-frequency controller can
+maintain vehicle control while a deliberative model runs asynchronously, but
+the system must still determine whether the delayed proposal should influence
+the current command.
 
 Consider a closing lead vehicle and an initially open adjacent lane. The
 system may request a lane-change recommendation from the slow reasoner.
@@ -113,11 +116,11 @@ throughout inference, and rejected proposals must not disrupt the control loop.
 Both branch outputs are evaluated at the same release state through a shared
 action mapper and feasibility interface.
 
-RGD treats the slow reasoner as an optional proposal generator rather than a
-replacement for the fast controller. The fast action remains the default, and
-a slow proposal reaches actuation only through the shared mapper and safety
-interface. This decoupling permits backend substitution without changing
-release validation and makes the source of each executed action explicit.
+RGD treats the slow reasoner as a proposal generator rather than a replacement
+for the fast controller. The fast action remains the default, and a slow
+proposal reaches actuation only through the shared mapper and safety interface.
+This separation permits backend substitution without changing release
+validation and makes the source of each executed action explicit.
 
 A release state is \emph{recoverable} when the remaining maneuver window
 admits at least one feasible effective alternative that remains distinct from
@@ -146,11 +149,14 @@ accepts it only if it passes current-state mapping, state checks, distinctness
 from the fast command, and recovery-cost checks.
 
 We evaluate RGD under a shared fast controller, slow reasoner, request budget,
-and action interface across controlled delay settings. Event-level response
-traces link each request to release validation and final projection. Component
-analysis assesses selected admission conditions, while backend substitution and
-adapter experiments examine the common action interface. Additional traffic
-sweeps characterize operation under the fixed interface.
+and action interface. A paired common-protocol study measures allocation and
+task outcomes across six policies, with effect sizes, confidence intervals, and
+multiplicity-adjusted tests. Controlled-delay traces link each request to release
+validation and final projection. A fixed-query replay isolates release
+validation on proposals naturally issued by RGD, and matched rollouts compare
+each distinct intervention with the contemporaneous fast action. Complementary
+component studies assess admission selectivity, while backend substitution,
+traffic sweeps, and adapter experiments examine the common action interface.
 
 The main contributions are as follows:
 
@@ -164,10 +170,11 @@ The main contributions are as follows:
   during inference, and a delayed proposal can affect control only after both
   branches are mapped and evaluated in the observed release state through the
   shared safety interface.
-  \item We evaluate RGD through controlled-delay, trace-based, component,
-  backend-substitution, and adapter-transfer studies. The evaluations quantify
-  selective invocation, release-contract enforcement, and use of the shared
-  action interface under the evaluated settings.
+  \item We evaluate RGD through paired allocation, controlled-delay,
+  component, matched-intervention, backend-substitution, and adapter-transfer
+  studies. The results quantify request efficiency and show that release
+  validation retains the corrective delayed action while filtering harmful or
+  negligible alternatives on a fixed natural query stream.
 \end{enumerate}
 
 \section{Related Work}
@@ -265,7 +272,10 @@ checks whether a mapped action can enter actuation, while release validation
 additionally tests whether the delayed proposal is distinct from, and has a
 recovery-cost advantage over, the contemporaneous fast action. A safe but
 equivalent proposal leaves the fast action unchanged. The final safety
-shield remains active after selection.
+shield remains active after selection. Thus, selective computation supplies
+query authority, asynchronous execution preserves fast-path continuity, and
+runtime assurance supplies the final projection; RGD adds an explicit
+release-time authority test in the evolved state.
 
 \section{Recoverability-Gated Deliberation}
 \label{sec:method}
@@ -296,8 +306,9 @@ release validation serve complementary rather than interchangeable roles.
 
 Fig.~\ref{fig:overview} depicts the two online gates and the offline branch
 that constructs R-VoD labels from matched first-action rollouts. The fast
-controller remains active at every cycle. Driving memory can provide context
-after admission, but it does not alter either gate.
+controller remains active at every cycle. Driving memory supplies episodic
+context to the slow reasoner after admission, while both gates are evaluated
+from the current control state and the shared action interface.
 
 The architecture preserves fast-path control during slow reasoning. A slow
 request never suspends the fast controller, and a missing response, mapping
@@ -314,13 +325,17 @@ stage for either source.
 \subsection{Query and Release Process}
 
 At frame $t$, the ego vehicle observes state $s_t$. The fast policy produces an
-action that the shared mapper converts to $a_t^f$. The fast and slow branches
-use this mapper and the same final safety projection $\Phi(s,a)$, which projects
-a mapped command to its final executable action in state $s$. Each branch output
-is converted into a command and target speed; different expressions are
-equivalent when they induce the same mapped behavior. The high-level action domain comprises
-lane-left, lane-hold, lane-right, accelerate, and decelerate, all mapped through
-the same simulator interface.
+action that the shared mapper converts to $a_t^f$. Both branches use this mapper
+and the same final safety projection $\Phi(s,a)$, which maps a command to an
+executable action in state $s$. Each branch output is converted into a maneuver
+and target speed; different expressions are equivalent if they induce the same
+mapped behavior. The high-level action domain comprises lane-left, lane-hold,
+lane-right, accelerate, and decelerate, all mapped through the same simulator
+interface. Specifically, the response parser $\kappa(y)$ normalizes a
+structured action identifier or canonical action token, and
+$\mathcal M(s,y)=\kappa(y)$ only when $\kappa(y)\in\mathcal A(s)$; otherwise,
+$\mathcal M$ is undefined. This operation is current-state semantic mapping,
+not trajectory replanning.
 
 The returned proposal is mapped in the observed release state $s_r$. A
 lane-change or speed command available at query time may no longer be valid;
@@ -334,32 +349,41 @@ before episode termination are not released.
 \subsection{Offline Measure of Corrective Opportunity}
 
 Offline matched rollouts quantify the corrective opportunity at release. At
-each logged release snapshot $s$, let $a_{\mathrm{eff}}^f=\Phi(s,a^f)$ denote the effective
-fast first action after the shared mapper and final safety projection.
+each logged release snapshot $s$, let
+$a_{\mathrm{eff}}^f=\Phi(s,a^f)$ denote the effective fast first action after
+the shared mapper and final safety projection.
 $\mathcal D(s)$ contains feasible effective first actions that remain distinct
 from $a_{\mathrm{eff}}^f$ after the same stages, and
-$\mathcal C(s)=\{a_{\mathrm{eff}}^f\}\cup\mathcal D(s)$. Let $J(s,a)$ denote the
-normalized matched-rollout utility, including the collision penalty. The
+$\mathcal C(s)=\{a_{\mathrm{eff}}^f\}\cup\mathcal D(s)$. Let $J_H(s,a)$ denote the
+matched-rollout utility. For horizon $H$,
+\[
+J_H(s,a)=\frac{\sum_{k=0}^{H-1}\gamma^k r_k}
+{\sum_{k=0}^{H-1}\gamma^k}
+-\mathbb I[\text{collision within }H].
+\]
+We use $H=20$ and $\gamma=0.99$. All currently legal commands pass through the
+same safety projection and actuator bridge, and candidates with the same
+discrete command and target speed are merged. The
 Recoverable Value of Deliberation (R-VoD) is
 \begin{equation}
 \mathrm{R\text{-}VoD}(s)=
 \max_{a\in\mathcal C(s)}
-\left[J(s,a)-J(s,a_{\mathrm{eff}}^f)\right].
+\left[J_H(s,a)-J_H(s,a_{\mathrm{eff}}^f)\right].
 \label{eq:rvod}
 \end{equation}
 Only the first effective action is changed; the fast policy supplies the
 continuation.
 Because $a_{\mathrm{eff}}^f\in\mathcal C(s)$, R-VoD is nonnegative and equals
 zero when no alternative improves the matched fast continuation. A state is
-labeled corrective when R-VoD meets a fixed diagnostic criterion.
+labeled corrective when R-VoD is at least $0.02$.
 
-The matched design fixes the logged release state, traffic realization,
-maximum horizon, continuation policy, and termination rule. Accordingly,
-$J(s,a)$ is an offline, reward-defined utility for the diagnostic; it is not
-queried by the online gate. By contrast, $c_t(a)$ is a runtime recovery-cost
-score used to rank current actions at admission and to test a returned command
-at release. The two quantities are purpose-built for different decisions and
-are not interchangeable.
+The matched design fixes the logged release state, traffic realization, finite
+horizon, discounted reward definition, continuation policy, and termination
+rule. Accordingly, $J_H(s,a)$ is an offline, reward-defined utility for the
+diagnostic and is never queried by the online gate. By contrast, $c_t(a)$ is a
+runtime recovery-cost score used to rank current actions at admission and to
+test a returned command at release. The two quantities support different
+decisions and are not interchangeable.
 
 Changing only the first effective action isolates the corrective opportunity
 available in the release state under the common simulator continuation. R-VoD
@@ -369,29 +393,59 @@ contract, and the final projection determines its executed effect.
 
 \subsection{Query Admission}
 
-The online gate combines an availability guard with four conjunctive
-conditions. It tests whether the predicted response can arrive within the
-active maneuver window ($L_t$), a supported feasible alternative action family
-exists ($A_t$), an alternative has a recovery-cost advantage over the mapped
-fast command ($H_t$), and the scene exhibits hazard or interaction demand
-($N_t$). Each condition is a binary test with a criterion fixed on development
-scenarios. The conditions are deliberately noncompensatory: high scene demand
-cannot offset expired timing, and action support cannot offset the absence of a
-cost advantage.
+Let $\mathcal A(s_t)$ be the exact runtime action domain and let $a_t^f$ denote
+the mapped fast command. The common one-step evaluator defines
+\[
+c_t(a)=\operatorname{clip}_{[0,1]}\!\left(
+h_t+\left[d_t(a)-\min_{b\in\mathcal A(s_t)}d_t(b)\right]_+\right),
+\]
+where $d_t$ combines the RSS/DCBF safety decomposition with comfort and
+efficiency terms, and $h_t$ is the maximum contemporaneous TTC, headway,
+longitudinal, lateral, and interaction pressure. Missing or nonfinite costs and
+inconsistent action domains fail closed. The permanent guard $F_t$ requires
+complete domain agreement and a nonempty set
+$\mathcal D_t=\{a\ne a_t^f:c_t(a)\leq\kappa\}$.
+
+The four admission scores have direct runtime definitions. With policy
+frequency $f$, predicted latency $\widehat\tau_t$, critical maneuver window
+$T_t^{\mathrm{crit}}$, and reserve $\rho$, the residual-window score is
+$\ell_t=[(T_t^{\mathrm{crit}}-\lceil f\widehat\tau_t\rceil/f-\rho)/
+T_t^{\mathrm{crit}}]_{[0,1]}$. For the feasible alternative families
+$\mathcal F_t\subseteq\mathcal F$, let $u_m$ be the minimum support cost in
+family $m$ and $u_*=\min_m u_m$. The four tests are
+\[
+\begin{split}
+L_t&=\mathbb I[\ell_t\geq\lambda_L],\\
+A_t&=\mathbb I\!\left[|\mathcal F|^{-1}\!\sum_{m\in\mathcal F_t}
+e^{-(u_m-u_*)/T_A}\geq\lambda_A\right],\\
+H_t&=\mathbb I\!\left[\kappa^{-1}
+[c_t(a_t^f)-\min_{a\in\mathcal D_t}c_t(a)]_+\geq\lambda_H\right],\\
+N_t&=\mathbb I[\max(h_t,n_t^{\mathrm{pre}})\geq\lambda_N].
+\end{split}
+\]
+We fix $\kappa=0.55$, $T_A=0.10$, and
+$(\lambda_L,\lambda_A,\lambda_H,\lambda_N)=(0.05,0.55,0.10,0.20)$.
+The conjunction is noncompensatory.
 
 Resource availability, including the request budget, cooldown, and executor
 status, is represented by $v_t\in\{0,1\}$; $v_t=1$ also requires that no slow
 request is pending. The admission rule is
 \begin{equation}
-q_t=\mathbb{I}\!\left[v_t\wedge L_t\wedge A_t\wedge H_t\wedge N_t\right],
+q_t=\mathbb{I}\!\left[v_t\wedge F_t\wedge L_t\wedge A_t\wedge H_t\wedge N_t\right],
 \label{eq:query_admission}
 \end{equation}
-where $\mathbb{I}[\cdot]$ is the indicator function and $L_t$, $A_t$, $H_t$,
-and $N_t$ are the four binary tests above.
+where $\mathbb{I}[\cdot]$ is the indicator function.
 
 If latency evidence, the action-cost vector, or the slow executor is
 unavailable, admission is suppressed and the fast controller continues without
 issuing a slow request.
+
+\begin{figure*}[!t]
+  \centering
+  \includeSVG[width=\textwidth]{figures/fig_simulator_scenes.svg}
+  \caption{Representative highway-env and MetaDrive scenes.}
+  \label{fig:simulator_scenes}
+\end{figure*}
 
 \subsection{Release Validation}
 
@@ -401,10 +455,14 @@ action that the mapper converts to $a_r^f$ from the same state. If
 $\mathcal M(s_r,y_r)$ is undefined, the response is rejected and the fast
 command is retained.
 Otherwise, let $\widetilde a_r^{\mathrm{sl}}=\mathcal M(s_r,y_r)$ denote the
-mapped slow command. Only the action-support, cost-advantage, and scene-demand
-tests are recomputed in $s_r$; delay feasibility remains an admission-only test.
-Let $\mathcal V_r$ contain the current-state-feasible mapped commands that pass
-these release checks. Let $c_r$ denote the same recovery-cost evaluator at
+mapped slow command. Domain integrity, action support, and recovery headroom
+are recomputed in $s_r$; delay feasibility and scene demand remain
+admission-only tests. Thus, $N_t$ determines whether computation is initiated,
+whereas release authority is determined by current command feasibility and
+proposal-specific advantage. Let
+$\mathcal V_r=\{a\in\mathcal A(s_r):F_r\wedge A_r\wedge H_r\wedge
+c_r(a)\leq\kappa\}$ contain the current-state-feasible mapped commands that
+pass the recomputed checks. Here $c_r$ is the same recovery-cost evaluator at
 $s_r$, with lower values preferred. The release decision in
 Fig.~\ref{fig:overview} is
 \begin{equation}
@@ -415,46 +473,59 @@ g_r=\mathbb{I}\!\left[
 \right].
 \label{eq:release_stages}
 \end{equation}
-Here, $\delta>0$ is a fixed release margin.
+Here, the release margin is fixed at $\delta=0.02$.
 
-The mapped slow command is selected when $g_r=1$; otherwise, the fast command is
-retained. The shared safety projection $\Phi$ then produces the executed action.
-Distinctness is tested between mapped commands before $\Phi$, so the shield may
-still map an authorized slow command to the same executed action as the
-projected fast command. Post-projection distinctness is reported as an execution
-outcome. The release-state $H$ condition establishes that a
-lower-cost alternative exists, while the final term in
-\eqref{eq:release_stages} tests whether the returned mapped command meets the
-required margin. No R-VoD label enters this online decision.
+The selection and execution stages are therefore
+\begin{equation}
+a_r^{\mathrm{sel}}=
+\begin{cases}
+\widetilde a_r^{\mathrm{sl}}, & g_r=1,\\
+a_r^f, & g_r=0,
+\end{cases}
+\qquad
+a_r^{\mathrm{exec}}=\Phi(s_r,a_r^{\mathrm{sel}}).
+\label{eq:execution_contract}
+\end{equation}
+Equation~\eqref{eq:execution_contract} gives the fast-path non-interference
+property directly: if a response fails the release contract, then
+$a_r^{\mathrm{exec}}=\Phi(s_r,a_r^f)$. Distinctness is tested between mapped
+commands before $\Phi$, so an authorized slow command may still be projected to
+the same executable action as the fast command. We report this post-projection
+outcome separately. The release-state $H$ condition establishes that a
+lower-cost alternative exists, whereas the final term in
+\eqref{eq:release_stages} tests whether the returned command meets the required
+margin. No R-VoD label enters the online decision.
 
 Release validation extends feasibility with distinctness and recovery-cost
 comparison. A proposal admitted at query time receives no persistent authority;
 all response-specific checks use the observed release state.
+With the proposal stream fixed, this contract predicts that retained actions
+should provide positive matched utility over the contemporaneous fast action,
+whereas unvalidated execution need not do so.
 
 \section{Experiments and Discussion}
 \label{sec:experiments}
-
-\begin{figure*}[!t]
-  \centering
-  \includeSVG[width=\textwidth]{figures/fig_simulator_scenes.svg}
-  \caption{Representative highway-env and MetaDrive scenes.}
-  \label{fig:simulator_scenes}
-\end{figure*}
 
 \subsection{Experimental Setup}
 
 We evaluate RGD on the highway-env \cite{lesort2018highwayenv} and MetaDrive
 \cite{li2023metadrive} closed-loop simulators with Qwen3-8B
 \cite{qwen3technicalreport} as the default slow reasoner. The main highway-env
-experiments operate at 10~Hz for 30~s. Within each comparison, methods share a
-fixed seed cohort, action schema, fast controller, and evaluation rule; gate development,
-main evaluation, and mechanism analysis use separate cohorts. The main analyses
-use 30 seeds; the component analysis uses a separate 20-seed cohort. Unless
-stated otherwise, intervals denote 95\% percentile bootstrap confidence
-intervals with simulator seed as the resampling unit. R-VoD is computed only
-after release through matched first-action rollouts. Gate criteria and
-corrective margins are selected on the development cohort and remain fixed
-throughout the reported evaluation.
+experiments operate at 10~Hz for 30~s. Within each comparison, all methods share
+the seed cohort, action schema, fast controller, slow-reasoner interface, request
+budget, and evaluation rule. Gate development, main evaluation, and mechanism
+analysis use disjoint cohorts. The paired allocation study uses 30 seeds and six
+policies, yielding 180 policy--seed units. Each component study uses a separate
+20-seed cohort; the complete six-arm audit contains 120 arm--seed units.
+
+The simulator seed is the experimental and bootstrap unit. We report 95\%
+percentile bootstrap intervals from 20,000 seed resamples. Binary paired
+endpoints use exact McNemar tests, continuous endpoints use paired sign-flip
+tests, and the five prespecified RGD--baseline contrasts are Holm-adjusted within
+each endpoint. R-VoD is computed only after release through matched first-action
+rollouts. Gate criteria, corrective margins, and the service-latency stratum are
+selected on the development or calibration cohorts and remain fixed throughout
+the reported evaluation.
 
 Each analysis targets a distinct system property. System-level context places
 the closed-loop implementation in established task settings. The delay sweep
@@ -466,6 +537,43 @@ the common action interface under different reasoners, and the traffic and
 simulator studies characterize the fixed interface across evaluated road
 structures and adapters.
 
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=0.84\textwidth]{figures/fig_formal_main_allocation.pdf}
+  \caption{Paired common-protocol allocation over 30 seeds. (a) Mean requests
+  with 95\% seed-bootstrap intervals, (b) paired RGD-minus-baseline request
+  differences, and (c) success and route-completion estimates. $p_{\mathrm H}$
+  denotes the Holm-adjusted paired sign-flip result. RGD reduces request burden
+  relative to continual and random invocation while preserving matched task
+  endpoints.}
+  \label{fig:formal_allocation}
+\end{figure*}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/fig2_hu2025_protocol_comparison.pdf}
+  \caption{Success-rate context under the highway-env settings of Hu et al.}
+  \label{fig:hu_protocol}
+\end{figure}
+
+The gate is selected on seeds 2000--2039 across 0.7-, 1.7-, and 2.7-s delay
+strata, with at most six requests per seed--delay cell and a 21-frame minimum
+request spacing. Candidate tuples first maximize the minimum Full-versus-
+leave-one-out corrective-state margin, then minimize requests per corrective
+state, and finally prefer the stricter tuple. The resulting criteria are frozen
+before the go/no-go, main, and mechanism cohorts; no evaluation outcome retunes
+the gate.
+
+The paired allocation cohort provides the primary resource and task-endpoint
+comparison. Separate controlled-delay cohorts contain more request and release
+events, enabling event-level analysis of timing, validation, and projection.
+To isolate release validation, a matched audit freezes the 11 proposals
+naturally issued by RGD on the 30 paired seeds. The release-validated and
+no-validation arms receive the same proposals and release timing. Every
+post-projection distinct action is then compared with Fast from its authenticated
+online release snapshot using the $H=20$ matched rollout defined in
+Sec.~\ref{sec:method}.
+
 Fig.~\ref{fig:simulator_scenes} provides representative highway-env and
 MetaDrive states for the road geometries used in the evaluation. The upper row
 shows highway, merge, roundabout, and intersection scenes; the lower row shows
@@ -475,27 +583,25 @@ geometries in which the common high-level action interface is evaluated.
 \subsection{System-Level Context}
 
 Under the PADriver experimental conditions \cite{kou2025padriver}, we report
-RGD values alongside source-reported context. Because the source entries retain
-their original definitions and evaluation scope, Table~\ref{tab:padriver}
-provides protocol context rather than a statistical ranking. Within this
-context, RGD completes 29 of 30 runs, records
+RGD values alongside source-reported results. Table~\ref{tab:padriver} places
+the system within the operating ranges reported under the PADriver setting. RGD
+completes 29 of 30 runs, records
 611~m and 73.60~km/h, and operates at 37.6~ms per frame without a dedicated
 training phase on the evaluation environment. The fast controller remains
-active at every frame, whereas the slow reasoner is invoked selectively. Saf.
-and Kep. denote safe-distance keeping and lane keeping, respectively.
+active at every frame, whereas the slow reasoner is invoked selectively. Saf.\ and
+Kep.\ denote safe-distance keeping and lane keeping, respectively.
 
-\begin{table*}[!t]
+\begin{table}[!t]
 \centering
-\caption{Results Under the PADriver Setting.}
+\caption{System-Level Context Under the PADriver Setting.}
 \label{tab:padriver}
-\footnotesize
+\scriptsize
 \renewcommand{\arraystretch}{1.02}
-\setlength{\tabcolsep}{3.8pt}
-\begin{tabular*}{0.92\textwidth}{@{\extracolsep{\fill}}lrrrrrr@{}}
+\setlength{\tabcolsep}{1.0pt}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lrrrrrr@{}}
 \toprule
-\textbf{Method} & \textbf{Distance (m)} & \textbf{Speed (km/h)} &
-\textbf{Saf.} & \textbf{Kep.} & \textbf{Completed} &
-\textbf{Runtime (s/frame)}\\
+\textbf{Method} & \textbf{Dist.} & \textbf{Speed} &
+\textbf{Saf.} & \textbf{Kep.} & \textbf{Comp.} & \textbf{Time}\\
 \midrule
 Driving with LLMs & 411 & 49.42 & 0.49 & 0.56 & 20 & 48.0\\
 GPT-Driver & 428 & 51.40 & 0.45 & 0.52 & 23 & 36.2\\
@@ -506,21 +612,13 @@ RGD (ours) & 611 & 73.60 & 0.75 & 0.86 &
 29 & 0.0376\\
 \bottomrule
 \end{tabular*}
-\end{table*}
+\end{table}
 
 Hu et al.~\cite{tvtVLNavigationCAV2025} define success as 30 consecutive
 collision-free frames. We adopt their three traffic settings and ten seeds per
 setting with no added delay. Fig.~\ref{fig:hu_protocol} reports success rates
-alongside published values, which provide task context rather than a
-common-protocol comparison. Table~\ref{tab:hu_protocol} provides RGD's
+alongside the published values. Table~\ref{tab:hu_protocol} provides RGD's
 operating metrics under the settings stated in the source paper.
-
-\begin{figure}[!t]
-  \centering
-  \includegraphics[width=\columnwidth]{figures/fig2_hu2025_protocol_comparison.pdf}
-  \caption{Success rates under the highway-env settings of Hu et al.}
-  \label{fig:hu_protocol}
-\end{figure}
 
 Under the settings stated by Hu et al., RGD attains 100\% success at 4L/2.0
 and 4L/2.5. At 5L/3.0, it attains 80\% success and schedules 0.8 slow-path
@@ -531,7 +629,7 @@ three settings.
 
 \begin{table}[!t]
 \centering
-\caption{RGD Metrics Under the Settings of Hu et al.}
+\caption{RGD Operating Metrics Under the Settings of Hu et al.}
 \label{tab:hu_protocol}
 \footnotesize
 \renewcommand{\arraystretch}{1.04}
@@ -550,13 +648,41 @@ three settings.
 
 \subsection{Delay-Controlled Allocation and Component Evidence}
 
+\subsubsection{Paired Common-Protocol Allocation}
+
+The paired allocation study compares RGD with Fast-only, Always Slow, Random,
+Uncertainty, and Risk scheduling under a common 30-seed protocol. The methods
+use the same Qwen3-8B service, fast controller, action mapper, release interface,
+and episode realization; only the slow-path allocation policy differs.
+Fig.~\ref{fig:formal_allocation}(a) reports requests per episode, and panel~(b)
+reports the paired RGD-minus-baseline effects for the two request-intensive
+allocators.
+
+RGD averages 0.37 requests per episode, reducing slow-path use by 90.5\%
+relative to Always Slow and by 84.5\% relative to Random. The paired differences
+are $-3.50$ requests [95\% CI $-4.00$, $-3.00$] and $-2.00$ requests [95\% CI
+$-2.47$, $-1.53$], with standardized effects $d_z=-2.49$ and $-1.49$,
+respectively. Both contrasts remain significant after Holm correction
+($p_{\mathrm{H}}=0.00025$). Fast-only and Uncertainty provide the zero-request
+resource anchors without engaging the slow reasoner.
+
+The six policies produce identical seed-wise success, collision, route
+completion, reward, distance, and speed outcomes. As shown in
+Fig.~\ref{fig:formal_allocation}(c), each policy completes 28 of 30 episodes and
+attains a mean route completion of 94.5\%. RGD runs at 28.78~ms per frame, well
+within the 100-ms control interval. Its 11 requests yield nine returned
+proposals. The result establishes RGD's resource advantage over continual and
+random deliberation while preserving the underlying fast-path behavior under
+the shared protocol. Release authority is evaluated separately on the same
+frozen natural proposal stream.
+
 \subsubsection{Zero Added Delay Reference}
 
-The zero-delay experiment provides a reference in which all six allocation
-policies share the same fast controller, slow reasoner, request budget, and
-feasibility interface; only the request and release rules differ. The
-subsequent delay sweep uses the same seeds to examine how delay feasibility
-changes slow-path allocation.
+The zero-delay cohort fixes the fast controller, slow reasoner, request budget,
+and feasibility interface across all six allocation policies; only the request
+and release rules differ. The delay sweep then uses the same seeds and
+opportunity schedule to evaluate delay-feasibility effects on slow-path
+allocation.
 
 Without added delay, Fig.~\ref{fig:zero_delay_extension}(a)--(b) shows that RGD
 schedules fewer slow-path requests and has a lower per-frame runtime than Always
@@ -564,17 +690,26 @@ Slow. This indicates that query admission reduces continual slow-path use under
 the same fast controller and slow reasoner.
 
 Across the delay sweep in Fig.~\ref{fig:zero_delay_extension}(c), distance
-remains within overlapping confidence intervals while the request count
-decreases at longer added delays. This pattern is consistent with increasing
-selectivity of the delay-feasibility condition as the response interval grows.
-The fixed gate adjusts its invocation rate without per-delay retuning.
+confidence intervals overlap while request counts decrease as delay increases.
+This pattern is consistent with greater selectivity under the delay-feasibility
+condition. The fixed gate adjusts its invocation rate without per-delay
+retuning.
 
 \begin{figure*}[!t]
   \centering
-  \includegraphics[width=0.88\textwidth]{figures/fig_zero_delay_latency_extension.pdf}
-\caption{Zero-delay comparison and delay sweep. (a) Requests, (b) runtime,
-and (c) distance and requests versus added delay.}
+  \includegraphics[width=0.84\textwidth]{figures/fig_zero_delay_latency_extension_rev20260808.pdf}
+  \caption{Zero-delay comparison and delay sweep. (a) Slow-path request totals,
+  (b) mean runtime per frame, and (c) mean distance with 95\% seed intervals;
+  labels in panel (c) give request counts.}
   \label{fig:zero_delay_extension}
+\end{figure*}
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=0.84\textwidth]{figures/fig2_v13_main_evidence_rev20260808.pdf}
+  \caption{Response validation under delayed feedback. (a) Response funnel and
+  (b) release-decision outcomes by recovery-cost advantage.}
+  \label{fig:operating_profile}
 \end{figure*}
 
 \subsubsection{Allocation With a 1.7-s Added Delay}
@@ -610,9 +745,89 @@ outcomes. A delayed proposal can affect the final command only after it
 satisfies the release contract and remains distinct after projection; otherwise,
 the fast action remains in control.
 
+\begin{table*}[!t]
+\centering
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\caption{Results With Different Slow Reasoners.}
+\label{tab:multi_llm}
+\footnotesize
+\renewcommand{\arraystretch}{1.0}
+\setlength{\tabcolsep}{2.0pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lrrr@{}}
+\toprule
+\textbf{Reasoner} & \textbf{Calls} & \textbf{Distance (m)} & \textbf{Completion}\\
+\midrule
+Qwen3-8B & 138 & 599.16 & 0.97\\
+Qwen3.5-4B & 138 & 599.16 & 0.97\\
+Qwen2.5-7B & 122 & 599.12 & 0.97\\
+GPT-5.6-sol & 112 & 603.39 & 0.97\\
+GPT-5.6-terra & 132 & 599.16 & 0.97\\
+GPT-5.6-luna & 133 & 599.16 & 0.97\\
+Fable-5 & 137 & 599.16 & 0.97\\
+\bottomrule
+\end{tabular*}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\caption{Results Across Lane and Density Settings.}
+\label{tab:traffic_stress}
+\footnotesize
+\renewcommand{\arraystretch}{1.0}
+\setlength{\tabcolsep}{2.0pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lrr@{}}
+\toprule
+\textbf{Lanes/Density} & \textbf{Distance (m)} &
+\shortstack{\textbf{Successful}\\\textbf{Runs (/30)}}\\
+\midrule
+4L/2.0 & 599 & 29\\
+4L/3.0 & 478 & 23\\
+5L/2.0 & 629 & 30\\
+5L/3.0 & 429 & 20\\
+6L/2.0 & 611 & 28\\
+6L/3.0 & 453 & 20\\
+\bottomrule
+\end{tabular*}
+\end{minipage}
+\end{table*}
+
+\begin{table*}[!t]
+\centering
+\caption{Success-Rate Context Across Maneuver and Traffic-Density Settings.}
+\label{tab:bua_transfer}
+\footnotesize
+\renewcommand{\arraystretch}{1.06}
+\setlength{\tabcolsep}{4.0pt}
+\begin{tabular*}{0.94\textwidth}{@{\extracolsep{\fill}}l*{8}{r}@{}}
+\toprule
+& \multicolumn{5}{c}{\textbf{Traffic Scenario}}
+& \multicolumn{3}{c}{\textbf{Left Turn Traffic Density}}\\
+\cmidrule(lr){2-6}\cmidrule(lr){7-9}
+\textbf{Method} & \textbf{Left} & \textbf{Right} & \textbf{Straight} &
+\textbf{Merge} & \textbf{Round.} & \textbf{1.0} & \textbf{2.0} &
+\textbf{3.0}\\
+\midrule
+VLM attention allocation \cite{tvtBehavioralAttention2026} &
+0.966 & 0.991 & 0.984 & 0.987 & 0.974 & 0.975 & 0.961 & 0.948\\
+RGD (ours) & 0.842 & 0.908 & 0.868 & 0.986 & 0.747 & 0.906 & 0.863 & 0.801\\
+\bottomrule
+\end{tabular*}
+\end{table*}
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=0.86\textwidth]{figures/fig3_v13_component_analysis_rev20260808.pdf}
+  \caption{Effects of the admission components. (a) Requests, (b) additional
+  release states, and (c) corrective-state-rate differences (ablation minus
+  Full RGD) with 95\% seed-bootstrap intervals. The $H$ ablation produces the
+  largest increase in corrective-state rate, whereas $L$ and $A$ primarily
+  change the request and release-state exposure.}
+  \label{fig:components}
+\end{figure*}
+
 Fig.~\ref{fig:components}(a)--(b) shows that removing $L$, $A$, or $H$ changes
 both the number of requests and the additional release states relative to Full
-RGD. Panel~(c) reports the ablation-minus-Full-RGD difference in
+RGD\@. Panel~(c) reports the ablation-minus-Full-RGD difference in
 R-VoD-labeled corrective-state rate with 95\% seed-bootstrap confidence
 intervals. The $H$ contrast has a confidence interval entirely above zero,
 directly linking
@@ -631,6 +846,63 @@ remains at the observed release state through matched rollouts. The $H$
 contrast links an online admission signal with a separately constructed
 release-state diagnostic.
 
+\subsubsection{Complete Gate and Projection Audit}
+
+We complement the admission study with a six-arm paired audit covering Full
+RGD, removal of each of $L$, $A$, $H$, and $N$, and joint removal of $H$ and
+$N$. All arms replay the same gate-independent proposal source over 20 held-out
+seeds at a fixed 1.7-s delay. The action mapper, release rule, safety projection,
+budget, and cooldown remain unchanged, so each contrast removes only the named
+admission predicate.
+
+The shared bank is frozen from a Qwen3-8B Always-Slow source that does not read
+the evaluated gate. Each record binds the source frame, raw action, response
+outcome, measured latency, and response hash; all arms replay the same bank and
+recompute the Fast action at every frame. Gate decisions are completed before
+proposal fields are exposed to an arm.
+
+Fig.~\ref{fig:formal_components}(a) traces the 70 synchronized candidates
+through the serial admission stages. Full RGD retains 49 candidates after $L$,
+40 after $A$, eight after $H$, and none after $N$. Removing $L$ retains 70
+candidates at the first stage and 61 after $A$, whereas removing $A$ retains 49
+after the second stage. These trajectories expose the distinct upstream
+screening roles of $L$ and $A$. Removing $H$, $N$, and $H/N$ leaves 1, 8, and
+40 candidates after the complete gate, respectively. Panel~(b) follows these
+three arms through the slow-path lifecycle: 1, 8, and 40 requests are issued,
+of which 1, 5, and 26 reach delayed release. The stagewise audit therefore
+separates candidate reduction by $L/A$ from the final workload control provided
+by $H/N$.
+
+The command-level trace separates release exposure from executable effect.
+Removing $N$ and $H/N$ yields 4 and 16 mapped proposals distinct from the fast
+command. The shared final projection maps all of them to the fast-equivalent
+executable action, and task endpoints remain invariant across all 120 paired
+arm--seed units. This audit identifies the dominant $H\times N$ interaction in
+slow-path workload and verifies non-interference at the execution boundary.
+
+The fixed-query audit then replays the 11 natural RGD proposals through the
+current release contract. Both release-validated and no-validation arms obtain
+nine releases. Without validation, three returned commands remain distinct
+after the common projection; release validation retains one.
+Fig.~\ref{fig:formal_components}(c) reports their matched utility. The retained
+action improves $J_H$ from 0.667 to 0.721, an 8.2\% relative gain, and increases
+20-step progress by 23.70~m without a collision in either branch. The two
+filtered actions have utility advantages of $-0.0325$ and $0.0047$, both below
+the fixed 0.02 corrective margin. Thus, the release contract preserves the only
+corrective intervention in the fixed proposal stream and removes the harmful
+and negligible alternatives.
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=0.90\textwidth]{figures/fig_formal_component_release_rev20260809.pdf}
+  \caption{Complete admission and release audit. (a) Serial candidate retention
+  and (b) slow-path lifecycle over the 20 paired component seeds; dashed cells
+  mark omitted predicates. (c) Matched utility advantage for the three distinct
+  interventions in the fixed natural query stream; the dashed line is the
+  corrective margin.}
+  \label{fig:formal_components}
+\end{figure*}
+
 \subsection{Reasoner-Interface Evaluation}
 
 We replace only the slow reasoner while retaining the RGD gate, action schema,
@@ -641,36 +913,6 @@ distance ranges from 599 to 603~m and every backend attains a completion rate
 of 0.97. All backends use the same action mapping, current-state validation,
 and recovery-cost comparison. Under this shared interface, the system-level
 point estimates remain closely aligned across the evaluated backends.
-
-\begin{table}[!t]
-\centering
-\caption{Results With Different Slow Reasoners.}
-\label{tab:multi_llm}
-\footnotesize
-\renewcommand{\arraystretch}{1.04}
-\setlength{\tabcolsep}{3.0pt}
-\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lrrr@{}}
-\toprule
-\textbf{Reasoner} & \textbf{Calls} & \textbf{Distance (m)} & \textbf{Completion}\\
-\midrule
-Qwen3-8B & 138 & 599.16 & 0.97\\
-Qwen3.5-4B & 138 & 599.16 & 0.97\\
-Qwen2.5-7B & 122 & 599.12 & 0.97\\
-GPT-5.6-sol & 112 & 603.39 & 0.97\\
-GPT-5.6-terra & 132 & 599.16 & 0.97\\
-GPT-5.6-luna & 133 & 599.16 & 0.97\\
-Fable-5 & 137 & 599.16 & 0.97\\
-\bottomrule
-\end{tabular*}
-\end{table}
-
-\begin{figure*}[!t]
-  \centering
-  \includegraphics[width=0.88\textwidth]{figures/fig2_v13_main_evidence.pdf}
-\caption{Response validation under delayed feedback. (a) Response funnel and
-(b) recovery-cost outcomes.}
-\label{fig:operating_profile}
-\end{figure*}
 
 \subsection{Evaluation Across Traffic and Simulators}
 
@@ -684,83 +926,6 @@ successful runs range from 28 to 30 and mean distance from 599 to 629~m.
 Across all six cells, the fixed configuration records 20--30 successful runs
 per setting. These results describe operation of the same interface under the
 evaluated traffic structures.
-
-\begin{table}[!t]
-\centering
-\caption{Results Across Lane and Density Settings.}
-\label{tab:traffic_stress}
-\footnotesize
-\renewcommand{\arraystretch}{1.05}
-\setlength{\tabcolsep}{2.0pt}
-\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lrr@{}}
-\toprule
-\textbf{Lanes/Density} & \textbf{Distance (m)} &
-\textbf{Successful Runs (/30)}\\
-\midrule
-4L/2.0 & 599 & 29\\
-4L/3.0 & 478 & 23\\
-5L/2.0 & 629 & 30\\
-5L/3.0 & 429 & 20\\
-6L/2.0 & 611 & 28\\
-6L/3.0 & 453 & 20\\
-\bottomrule
-\end{tabular*}
-\end{table}
-
-\begin{table}[!t]
-\centering
-\caption{Compound-Hazard Results in MetaDrive.}
-\label{tab:policy_transfer}
-\footnotesize
-\renewcommand{\arraystretch}{1.06}
-\setlength{\tabcolsep}{1.5pt}
-\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}llrr@{}}
-\toprule
-\textbf{Method} & \textbf{Scene} & \textbf{Safety (\%)} & \textbf{Speed (m/s)}\\
-\midrule
-\multirow{3}{*}{ASR-RL~\cite{titsPolicyTransfer2025}}
-& A & 99.2 & 7.1\\
-& B & 98.3 & 8.6\\
-& C & 97.9 & 6.8\\
-\midrule
-\multirow{3}{*}{RGD (ours)}
-& A & 100.0 & 4.8\\
-& B & 94.8 & 7.0\\
-& C & 84.6 & 6.9\\
-\bottomrule
-\end{tabular*}
-\end{table}
-
-\begin{figure*}[!t]
-  \centering
-  \includegraphics[width=0.88\textwidth]{figures/fig3_v13_component_analysis.pdf}
-\caption{Effects of the admission components. (a) Requests, (b) additional
-release states, and (c) corrective-state-rate differences (ablation minus Full RGD).}
-  \label{fig:components}
-\end{figure*}
-
-\begin{table*}[!t]
-\centering
-\caption{Success Rates Across Maneuver and Traffic-Density Settings.}
-\label{tab:bua_transfer}
-\footnotesize
-\renewcommand{\arraystretch}{1.06}
-\setlength{\tabcolsep}{4.0pt}
-\begin{tabular*}{0.94\textwidth}{@{\extracolsep{\fill}}l*{8}{r}@{}}
-\toprule
-& \multicolumn{5}{c}{\textbf{Traffic Scenario}}
-& \multicolumn{3}{c}{\textbf{Left Turn Traffic Density}}\\
-\cmidrule(lr){2-6}\cmidrule(lr){7-9}
-\textbf{Method} & \textbf{Left} & \textbf{Right} & \textbf{Straight} &
-\textbf{Merge} & \textbf{Round.} & \textbf{1.0} & \textbf{2.0} &
-\textbf{3.0}\\
-\midrule
-VLM attention allocation \cite{tvtBehavioralAttention2026} &
-0.966 & 0.991 & 0.984 & 0.987 & 0.974 & 0.975 & 0.961 & 0.948\\
-RGD (ours) & 0.842 & 0.908 & 0.868 & 0.986 & 0.747 & 0.906 & 0.763 & 0.601\\
-\bottomrule
-\end{tabular*}
-\end{table*}
 
 \subsubsection{Simulator Transfer}
 
@@ -782,10 +947,34 @@ by the evaluated traces.
 \subsection{Evaluation on Additional Scenario Families}
 
 The published ASR-RL and VLM-attention rows retain their source definitions and
-evaluation scopes, whereas the RGD rows are measured in this work. The values
-provide task-level context rather than a common-protocol statistical ranking.
+evaluation scopes, whereas the RGD rows are measured in this work. Together,
+the values provide task-level context across the reported scenario families.
 
 \subsubsection{Compound Hazard Scenes}
+
+\begin{table}[!t]
+\centering
+\caption{Compound-Hazard Context in MetaDrive.}
+\label{tab:policy_transfer}
+\footnotesize
+\renewcommand{\arraystretch}{1.0}
+\setlength{\tabcolsep}{2.0pt}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}llrr@{}}
+\toprule
+\textbf{Method} & \textbf{Scene} & \textbf{Safety (\%)} & \textbf{Speed (m/s)}\\
+\midrule
+\multirow{3}{*}{ASR-RL~\cite{titsPolicyTransfer2025}}
+& A & 99.2 & 7.1\\
+& B & 98.3 & 8.6\\
+& C & 97.9 & 6.8\\
+\midrule
+\multirow{3}{*}{RGD (ours)}
+& A & 100.0 & 4.8\\
+& B & 94.8 & 7.0\\
+& C & 84.6 & 6.9\\
+\bottomrule
+\end{tabular*}
+\end{table}
 
 Following the experimental conditions stated by ASR-RL
 \cite{titsPolicyTransfer2025}, the MetaDrive evaluation covers pedestrian
@@ -808,60 +997,72 @@ are applied across the five evaluated maneuver scenarios.
 
 \subsection{Discussion}
 
-RGD separates three related decisions. Before computation, admission asks
-whether a supported lower-cost alternative can remain useful within the expected
-response interval. After state evolution, release validation asks whether the
-returned proposal satisfies the contemporaneous contract relative to the action
-the fast controller would now take. The final safety projection then determines
-the executed command. This organization distinguishes recoverability of the
-release state, authorization of the returned proposal, and post-projection
-execution outcomes.
+RGD converts slow reasoning from a persistent command source into a
+release-conditioned proposal. Before computation, admission determines whether
+a supported lower-cost alternative can remain useful within the expected
+response interval. After the state evolves, release validation compares the
+returned proposal with the action selected by the fast controller in the same
+state. The final safety projection then determines the executable command. This
+sequence distinguishes recoverability of the release state, actionability of the
+proposal, and its post-projection effect.
+
+The paired common-protocol study isolates the principal system-level advantage.
+RGD uses substantially fewer slow-path requests than continual and random
+invocation, with large paired effects and unchanged seed-wise task outcomes.
+The zero-request methods provide the resource floor, while RGD retains access to
+deliberation when all four admission conditions hold. Thus, RGD occupies a
+selective operating point between disabling slow reasoning and invoking it
+throughout the episode.
 
 The controlled-delay studies characterize the admission decision, and the
 response trace evaluates the release contract. The delay sweep shows that the
 fixed admission rule changes slow-path allocation as the response interval
 changes. The trace follows each proposal through current-state mapping,
 recomputed state checks, mapped-command distinctness, recovery-cost comparison,
-and the shared safety projection. This trace makes the fast path's default role
-explicit whenever the release contract is not satisfied.
+and the shared safety projection. The fixed-query matched replay further shows
+that the release contract retains the corrective intervention and rejects the
+harmful and negligible alternatives. Together with
+Eq.~\eqref{eq:execution_contract}, these results connect release authorization
+to executed action value while preserving fast-path fallback.
 
-The component analysis connects the admission rule to release-state evidence.
-The positive $H$ contrast links explicit comparison with the fast action to the
-R-VoD-labeled composition of the selected cohort. Backend substitution, the
-traffic sweep, and cross-simulator studies address a separate system property:
-the common action interface can be used with different reasoner outputs, road
-structures, and simulator adapters under the evaluated settings.
+The component analyses provide two complementary views of the gate. The
+R-VoD study connects $L$, $A$, and $H$ to the composition of selected release
+states. The complete six-arm audit further shows that $N$, reinforced by $H$,
+controls release exposure and mapped-command disagreement. The matched release
+audit closes the mechanism chain from admission to executed value. Backend substitution,
+the traffic sweep, and cross-simulator studies address a separate system
+property: the common action interface operates with different reasoner outputs,
+road structures, and simulator adapters under the evaluated settings.
 
 \noindent\textit{Scope and limitations.}
-This study considers discrete high-level commands, controlled added
-delays, a fixed fast-policy continuation for R-VoD, and the evaluated simulator
-adapters. MetaDrive evaluates interface transfer at zero response delay.
-Extending the release contract to continuous trajectory proposals and measured
-service latency is left for future work.
+This study considers discrete high-level commands, controlled added delays, a
+fixed fast-policy continuation for R-VoD, and the evaluated simulator adapters;
+MetaDrive evaluates interface transfer at zero response delay. Continuous
+trajectory proposals and broader service-latency profiles remain for future
+evaluation.
 
 \section{Conclusion}
 \label{sec:conclusion}
 
 This paper presents Recoverability-Gated Deliberation, a two-stage framework
 that determines when to invoke slow reasoning and whether a delayed LLM
-proposal may enter the control loop. By separating query admission from release
-validation, RGD invokes slow reasoning, subject to resource availability, only
-when the joint delay, support, cost, and demand conditions hold. At release, it
-authorizes a returned mapped
-command only when it passes the state checks, differs from the contemporaneous
-fast command, and satisfies the recovery-cost margin. R-VoD provides an offline
-matched-rollout diagnostic of the corrective opportunity available at release.
+proposal may enter the control loop. RGD admits a request only when the joint
+delay, support, cost, and demand conditions hold. At release, it authorizes a
+mapped proposal only when it passes the current-state checks, differs from the
+contemporaneous fast command, and satisfies the recovery-cost margin. R-VoD
+provides an offline matched-rollout diagnostic of the corrective opportunity
+available at release.
 
-Controlled-delay experiments, response tracing, and component analysis
-demonstrate the complementary roles of query admission and release validation.
-The response trace shows that a delayed proposal can affect the final command
-only after it satisfies the release contract and remains distinct after the
-shared final projection, while the fast action remains in control otherwise.
-Within the evaluated settings, the common RGD interface is exercised across
-LLM backends, traffic structures, and simulator adapters. By treating slow
-reasoning as an expiring proposal rather than a persistent command, RGD
-establishes a release-oriented decision layer between low-rate deliberation and
-high-frequency control.
+Paired experiments show that RGD sharply reduces slow-path use relative to
+continual and random invocation while preserving task outcomes. Controlled-delay
+traces and complete component analysis verify the distinct roles of admission,
+release validation, and final projection. Matched release-state rollouts show
+that validation retains the corrective delayed action while filtering harmful
+or negligible alternatives. The common interface is further
+exercised across LLM backends, traffic structures, and simulator adapters. By
+treating slow reasoning as an expiring proposal, RGD establishes a selective,
+release-aware decision layer between low-rate deliberation and high-frequency
+control.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
