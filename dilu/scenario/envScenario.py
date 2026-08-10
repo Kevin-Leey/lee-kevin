@@ -1,5 +1,4 @@
 from typing import List, Tuple, Optional, Union, Dict
-from datetime import datetime
 import math
 import os
 
@@ -52,21 +51,16 @@ class EnvScenario:
         self.network: RoadNetwork = self.road.network
 
         self.plotter = ScePlotter()
-        if database:
-            self.database = database
-        else:
-            self.database = datetime.strftime(
-                datetime.now(), '%Y-%m-%d_%H-%M-%S'
-            ) + '.db'
+        self.database = database
+        self.dbBridge: Optional[DBBridge] = None
+        if self.database:
+            if os.path.exists(self.database):
+                os.remove(self.database)
 
-        if os.path.exists(self.database):
-            os.remove(self.database)
-
-        self.dbBridge = DBBridge(self.database, env)
-
-        self.dbBridge.createTable()
-        self.dbBridge.insertSimINFO(envType, seed)
-        self.dbBridge.insertNetwork()
+            self.dbBridge = DBBridge(self.database, env)
+            self.dbBridge.createTable()
+            self.dbBridge.insertSimINFO(envType, seed)
+            self.dbBridge.insertNetwork()
 
     def getSurrendVehicles(self, vehicles_count: int) -> List[IDMVehicle]:
         return self.road.close_vehicles_to(
@@ -371,7 +365,8 @@ class EnvScenario:
 
     def describe(self, decisionFrame: int) -> str:
         surroundVehicles = self.getSurrendVehicles(10)
-        self.dbBridge.insertVehicle(decisionFrame, surroundVehicles)
+        if self.dbBridge is not None:
+            self.dbBridge.insertVehicle(decisionFrame, surroundVehicles)
         currentLaneIndex: LaneIndex = self.ego.lane_index
         if self.isInJunction(self.ego):
             roadCondition = "You are driving in an intersection, you can't change lane. "
@@ -387,7 +382,8 @@ class EnvScenario:
         self, decisionFrame: int, vectorID: str, done: bool,
         description: str, fewshots: str, thoughtsAndAction: str
     ):
-        self.dbBridge.insertPrompts(
-            decisionFrame, vectorID, done, description,
-            fewshots, thoughtsAndAction
-        )
+        if self.dbBridge is not None:
+            self.dbBridge.insertPrompts(
+                decisionFrame, vectorID, done, description,
+                fewshots, thoughtsAndAction
+            )
