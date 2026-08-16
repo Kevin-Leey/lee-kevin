@@ -26,101 +26,31 @@ L.~Wen \emph{et~al.}, ``{DiLu}: A knowledge-driven approach to autonomous
   driving with large language models,'' in \emph{Proc. Int. Conf. Learn.
   Represent. (ICLR)}, 2024.
 
-\bibitem{xu2024drivegpt4}
-Z.~Xu \emph{et~al.}, ``{DriveGPT4}: Interpretable end-to-end autonomous driving
-  via large language model,'' \emph{IEEE Robot. Autom. Lett.}, vol.~9, no.~10,
-  pp. 8186--8193, 2024.
-
-\bibitem{shao2024lmdrive}
-H.~Shao \emph{et~al.}, ``{LMDrive}: Closed-loop end-to-end driving with large
-  language models,'' in \emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern
-  Recognit. (CVPR)}, 2024, pp. 15\,120--15\,130.
-
-\bibitem{sima2024drivelm}
-C.~Sima \emph{et~al.}, ``{DriveLM}: Driving with graph visual question
-  answering,'' in \emph{Proc. Eur. Conf. Comput. Vis. (ECCV)}, 2024, pp.
-  256--274.
-
-\bibitem{mao2023gptdriver}
-\BIBentryALTinterwordspacing
-J.~Mao, Y.~Qian, J.~Ye, H.~Zhao, and Y.~Wang, ``{GPT-Driver}: Learning to drive
-  with {GPT},'' arXiv preprint arXiv:2310.01415, 2023. [Online]. Available:
-  \url{https://arxiv.org/abs/2310.01415}
-\BIBentrySTDinterwordspacing
-
-\bibitem{tvtVLNavigationCAV2025}
-Y.~Hu, D.~Ou, J.~Huang, M.~Wu, M.~Hao, and R.~Yu, ``Integrating vision and
-  language foundation models for enhanced navigation and decision-making in
-  connected autonomous vehicles,'' \emph{IEEE Trans. Veh. Technol.}, vol.~74,
-  no.~10, pp. 16\,233--16\,249, 2025.
-
-\bibitem{tvtDrivingKnowledge2026}
-D.~Pei, J.~He, K.~Liu, Y.~Wu, Y.~Lei, and X.~Xiao, ``Enhancement of large
-  language models driving knowledge for practical autonomous driving decision
-  making,'' \emph{IEEE Trans. Veh. Technol.}, pp. 1--17, 2026, early access.
-
-\bibitem{xin2026netroller}
-R.~Xin \emph{et~al.}, ``{NetRoller}: Interfacing general and specialized models
-  for end-to-end autonomous driving,'' \emph{IEEE Trans. Veh. Technol.},
-  vol.~75, no.~5, pp. 7469--7482, 2026.
-
-\bibitem{qian2024fasionad}
-\BIBentryALTinterwordspacing
-K.~Qian \emph{et~al.}, ``{FASIONAD}: Fast and slow fusion thinking systems for
-  human-like autonomous driving with adaptive feedback,'' arXiv preprint
-  arXiv:2411.18013, 2024. [Online]. Available:
-  \url{https://arxiv.org/abs/2411.18013}
-\BIBentrySTDinterwordspacing
-
-\bibitem{zhang2025adadrive}
-R.~Zhang \emph{et~al.}, ``{AdaDrive}: Self-adaptive slow-fast system for
-  language-grounded autonomous driving,'' in \emph{Proc. IEEE/CVF Int. Conf.
-  Comput. Vis. (ICCV)}, 2025, pp. 5112--5121.
-
-\bibitem{chen2026gvlm}
-X.~Chen, X.~Wang, W.~Chen, and J.~Gao, ``An adaptive multimodal end-to-end
-  autonomous driving framework based on behavior discrepancy,'' \emph{IEEE
-  Trans. Intell. Transp. Syst.}, pp. 1--12, 2026, early access.
-
-\bibitem{tvtBehavioralAttention2026}
-B.~Ma, H.~Liu, R.~Zhong, P.~Liu, X.~Zhou, and J.~Ma, ``Behavioral
-  uncertainty-aware attention allocation via {VLMs} for interactive autonomous
-  driving,'' \emph{IEEE Trans. Veh. Technol.}, pp. 1--14, 2026, early access.
-
-\bibitem{chen2024asyncdriver}
-Y.~Chen, Z.-H. Ding, Z.~Wang, Y.~Wang, L.~Zhang, and S.~Liu, ``Asynchronous
-  large language model enhanced planner for autonomous driving,'' in
-  \emph{Proc. Eur. Conf. Comput. Vis. (ECCV)}, 2024, pp. 22--38.
-
-\bibitem{li2026dualdrive}
-L.~Li, J.~Fang, J.~Xue, and C.~Lv, ``Vision--language model-enabled dual-system
-  for autonomous driving in safety-critical transportation,'' \emph{IEEE Trans.
-  Intell. Transp. Syst.}, pp. 1--12, 2026, early access.
-
-\bibitem{chen2022simplexdrive}
-S.~Chen, Y.~Sun, D.~Li, Q.~Wang, Q.~Hao, and J.~Sifakis, ``Runtime safety
-  assurance for learning-enabled control of autonomous driving vehicles,'' in
-  \emph{Proc. IEEE Int. Conf. Robot. Autom. (ICRA)}, 2022, pp. 8978--8984.
-
 \bibitem{chen2024drivingllms}
 L.~Chen \emph{et~al.}, ``Driving with {LLMs}: Fusing object-level vector
   modality for explainable autonomous driving,'' in \emph{Proc. IEEE Int. Conf.
   Robot. Autom. (ICRA)}, 2024, pp. 14\,093--14\,100.
 
-\bibitem{tvtVLMDriver2026}
-R.~Zhao \emph{et~al.}, ``{VLM-Driver}: Human-like autonomous driving
-  decision-making via vision language model,'' \emph{IEEE Trans. Veh.
-  Technol.}, vol.~75, no.~5, pp. 7327--7342, 2026.
+\bibitem{mao2023gptdriver}
+J.~Mao, Y.~Qian, J.~Ye, H.~Zhao, and Y.~Wang, ``{GPT-Driver}: Learning to drive
+  with {GPT},'' arXiv:2310.01415, 2023.
+
+\bibitem{tvtDrivingKnowledge2026}
+D.~Pei, J.~He, K.~Liu, Y.~Wu, Y.~Lei, and X.~Xiao, ``Enhancement of large
+  language models driving knowledge for practical autonomous driving decision
+  making,'' \emph{IEEE Trans. Veh. Technol.}, 2026, early access, doi:
+  10.1109/TVT.2026.3678726.
+
+\bibitem{tvtCtrail2026}
+Z.~Cui \emph{et~al.}, ``{C-TRAIL}: A commonsense world framework for trajectory
+  planning in autonomous driving,'' \emph{IEEE Trans. Veh. Technol.}, 2026,
+  early access, doi: 10.1109/TVT.2026.3682668.
 
 \bibitem{titsPolicyTransfer2025}
 J.~Wang, H.~Ren, X.~Zhu, and Z.~Ma, ``Enhancing autonomous vehicle
   decision-making through policy transfer with large language model,''
-  \emph{IEEE Trans. Intell. Transp. Syst.}, pp. 1--10, 2025, early access.
-
-\bibitem{tvtCtrail2026}
-Z.~Cui \emph{et~al.}, ``{C-TRAIL}: A commonsense world framework for trajectory
-  planning in autonomous driving,'' \emph{IEEE Trans. Veh. Technol.}, pp.
-  1--14, 2026, early access.
+  \emph{IEEE Trans. Intell. Transp. Syst.}, 2025, early access, doi:
+  10.1109/TITS.2025.3565762.
 
 \bibitem{wang2023drivedreamer}
 X.~Wang, Z.~Zhu, G.~Huang, X.~Chen, J.~Zhu, and J.~Lu, ``{DriveDreamer}:
@@ -142,22 +72,25 @@ B.~Liao \emph{et~al.}, ``{DiffusionDrive}: Truncated diffusion model for
   end-to-end autonomous driving,'' in \emph{Proc. IEEE/CVF Conf. Comput. Vis.
   Pattern Recognit. (CVPR)}, 2025, pp. 12\,037--12\,047.
 
+\bibitem{qian2024fasionad}
+K.~Qian \emph{et~al.}, ``{FASIONAD}: Fast and slow fusion thinking systems for
+  human-like autonomous driving with adaptive feedback,'' arXiv:2411.18013,
+  2024.
+
+\bibitem{zhang2025adadrive}
+R.~Zhang \emph{et~al.}, ``{AdaDrive}: Self-adaptive slow-fast system for
+  language-grounded autonomous driving,'' in \emph{Proc. IEEE/CVF Int. Conf.
+  Comput. Vis. (ICCV)}, 2025, pp. 5112--5121.
+
+\bibitem{xin2026netroller}
+R.~Xin \emph{et~al.}, ``{NetRoller}: Interfacing general and specialized models
+  for end-to-end autonomous driving,'' \emph{IEEE Trans. Veh. Technol.},
+  vol.~75, no.~5, pp. 7469--7482, 2026.
+
 \bibitem{mei2024leapad}
 J.~Mei \emph{et~al.}, ``Continuously learning, adapting, and improving: A
   dual-process approach to autonomous driving,'' in \emph{Proc. Adv. Neural
   Inf. Process. Syst. (NeurIPS)}, vol.~37, 2024, pp. 123\,261--123\,290.
-
-\bibitem{ma2026leapvad}
-Y.~Ma \emph{et~al.}, ``{LeapVAD}: A leap in autonomous driving via cognitive
-  perception and dual-process thinking,'' \emph{IEEE Trans. Neural Netw. Learn.
-  Syst.}, vol.~37, no.~4, pp. 1963--1977, 2026.
-
-\bibitem{luo2025adathinkdrive}
-\BIBentryALTinterwordspacing
-Y.~Luo \emph{et~al.}, ``{AdaThinkDrive}: Adaptive thinking via reinforcement
-  learning for autonomous driving,'' arXiv preprint arXiv:2509.13769, 2025.
-  [Online]. Available: \url{https://arxiv.org/abs/2509.13769}
-\BIBentrySTDinterwordspacing
 
 \bibitem{russell1991metareasoning}
 S.~Russell and E.~Wefald, ``Principles of metareasoning,'' \emph{Artif.
@@ -183,6 +116,16 @@ A.~Elboher, A.~Bensoussan, E.~Karpas, W.~Ruml, S.~S. Shperberg, and E.~Shimony,
   \emph{Proc. AAAI Conf. Artif. Intell.}, vol.~37, no.~10, 2023, pp.
   12\,427--12\,435.
 
+\bibitem{chen2024asyncdriver}
+Y.~Chen, Z.-H. Ding, Z.~Wang, Y.~Wang, L.~Zhang, and S.~Liu, ``Asynchronous
+  large language model enhanced planner for autonomous driving,'' in
+  \emph{Proc. Eur. Conf. Comput. Vis. (ECCV)}, 2024, pp. 22--38.
+
+\bibitem{chen2022simplexdrive}
+S.~Chen, Y.~Sun, D.~Li, Q.~Wang, Q.~Hao, and J.~Sifakis, ``Runtime safety
+  assurance for learning-enabled control of autonomous driving vehicles,'' in
+  \emph{Proc. IEEE Int. Conf. Robot. Autom. (ICRA)}, 2022, pp. 8978--8984.
+
 \bibitem{tabuada2007event}
 P.~Tabuada, ``Event-triggered real-time scheduling of stabilizing control
   tasks,'' \emph{IEEE Trans. Autom. Control}, vol.~52, no.~9, pp. 1680--1685,
@@ -199,16 +142,19 @@ T.~G. Molnar, A.~K. Kiss, A.~D. Ames, and G.~Orosz, ``Safety-critical control
   Technol.}, vol.~31, no.~4, pp. 1507--1520, 2023.
 
 \bibitem{shalevshwartz2017rss}
-\BIBentryALTinterwordspacing
 S.~Shalev-Shwartz, S.~Shammah, and A.~Shashua, ``On a formal model of safe and
-  scalable self-driving cars,'' arXiv preprint arXiv:1708.06374, 2017.
-  [Online]. Available: \url{https://arxiv.org/abs/1708.06374}
-\BIBentrySTDinterwordspacing
+  scalable self-driving cars,'' arXiv:1708.06374, 2017.
 
 \bibitem{liniger2019viability}
 A.~Liniger and J.~Lygeros, ``Real-time control for autonomous racing based on
   viability theory,'' \emph{IEEE Trans. Control Syst. Technol.}, vol.~27,
   no.~2, pp. 464--478, 2019.
+
+\bibitem{tvtVLNavigationCAV2025}
+Y.~Hu, D.~Ou, J.~Huang, M.~Wu, M.~Hao, and R.~Yu, ``Integrating vision and
+  language foundation models for enhanced navigation and decision-making in
+  connected autonomous vehicles,'' \emph{IEEE Trans. Veh. Technol.}, vol.~74,
+  no.~10, pp. 16\,233--16\,249, 2025.
 
 \bibitem{lesort2018highwayenv}
 \BIBentryALTinterwordspacing
@@ -224,11 +170,7 @@ Q.~Li, Z.~Peng, L.~Feng, Q.~Zhang, Z.~Xue, and B.~Zhou, ``{MetaDrive}:
   pp. 3461--3475, 2023.
 
 \bibitem{qwen3technicalreport}
-\BIBentryALTinterwordspacing
-A.~Yang \emph{et~al.}, ``{Qwen3} technical report,'' arXiv preprint
-  arXiv:2505.09388, 2025. [Online]. Available:
-  \url{https://arxiv.org/abs/2505.09388}
-\BIBentrySTDinterwordspacing
+A.~Yang \emph{et~al.}, ``{Qwen3} technical report,'' arXiv:2505.09388, 2025.
 
 \bibitem{kou2025padriver}
 G.~Kou \emph{et~al.}, ``{PADriver}: Towards personalized autonomous driving,''
