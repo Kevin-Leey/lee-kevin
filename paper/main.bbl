@@ -38,8 +38,13 @@ J.~Mao, Y.~Qian, J.~Ye, H.~Zhao, and Y.~Wang, ``{GPT-Driver}: Learning to drive
 \bibitem{tvtDrivingKnowledge2026}
 D.~Pei, J.~He, K.~Liu, Y.~Wu, Y.~Lei, and X.~Xiao, ``Enhancement of large
   language models driving knowledge for practical autonomous driving decision
-  making,'' \emph{IEEE Trans. Veh. Technol.}, 2026, early access, doi:
-  10.1109/TVT.2026.3678726.
+  making,'' \emph{IEEE Trans. Veh. Technol.}, vol.~75, no.~8, pp.
+  15\,944--15\,959, 2026, doi: 10.1109/TVT.2026.3678726.
+
+\bibitem{shao2024lmdrive}
+H.~Shao \emph{et~al.}, ``{LMDrive}: Closed-loop end-to-end driving with large
+  language models,'' in \emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern
+  Recognit. (CVPR)}, 2024, pp. 15\,120--15\,130.
 
 \bibitem{tvtCtrail2026}
 Z.~Cui \emph{et~al.}, ``{C-TRAIL}: A commonsense world framework for trajectory
@@ -150,16 +155,10 @@ A.~Liniger and J.~Lygeros, ``Real-time control for autonomous racing based on
   viability theory,'' \emph{IEEE Trans. Control Syst. Technol.}, vol.~27,
   no.~2, pp. 464--478, 2019.
 
-\bibitem{tvtVLNavigationCAV2025}
-Y.~Hu, D.~Ou, J.~Huang, M.~Wu, M.~Hao, and R.~Yu, ``Integrating vision and
-  language foundation models for enhanced navigation and decision-making in
-  connected autonomous vehicles,'' \emph{IEEE Trans. Veh. Technol.}, vol.~74,
-  no.~10, pp. 16\,233--16\,249, 2025.
-
 \bibitem{lesort2018highwayenv}
 \BIBentryALTinterwordspacing
 E.~Leurent, ``An environment for autonomous driving decision-making,'' GitHub
-  repository, 2018, version 1.12. [Online]. Available:
+  repository, Jul. 2026, version 1.12. [Online]. Available:
   \url{https://github.com/Farama-Foundation/HighwayEnv}
 \BIBentrySTDinterwordspacing
 
@@ -175,5 +174,11 @@ A.~Yang \emph{et~al.}, ``{Qwen3} technical report,'' arXiv:2505.09388, 2025.
 \bibitem{kou2025padriver}
 G.~Kou \emph{et~al.}, ``{PADriver}: Towards personalized autonomous driving,''
   in \emph{Proc. Int. Joint Conf. Neural Netw. (IJCNN)}, 2025, pp. 1--8.
+
+\bibitem{tvtVLNavigationCAV2025}
+Y.~Hu, D.~Ou, J.~Huang, M.~Wu, M.~Hao, and R.~Yu, ``Integrating vision and
+  language foundation models for enhanced navigation and decision-making in
+  connected autonomous vehicles,'' \emph{IEEE Trans. Veh. Technol.}, vol.~74,
+  no.~10, pp. 16\,233--16\,249, 2025.
 
 \end{thebibliography}
