@@ -1534,6 +1534,9 @@ class RGDOrchestrator:
             not enabled or assessment.get("corrective_headroom_pass", False)
         )
         n_pass = bool(not enabled or assessment.get("state_need_pass", False))
+        n_required = bool(
+            enabled and revalidation_cfg.get("require_state_need", True)
+        )
         distinct = bool(mapped_slow_action != int(fast_action))
 
         alignment_cfg = dict(
@@ -1595,7 +1598,7 @@ class RGDOrchestrator:
                 or (
                     a_pass
                     and h_pass
-                    and n_pass
+                    and (n_pass or not n_required)
                     and distinct
                     and alignment_pass
                 )
@@ -1610,6 +1613,7 @@ class RGDOrchestrator:
             "a_pass": bool(a_pass),
             "h_pass": bool(h_pass),
             "n_pass": bool(n_pass),
+            "n_required": bool(n_required),
             "distinct": bool(distinct),
             "alignment_enabled": bool(alignment_enabled),
             "alignment_evaluated": bool(alignment_evaluated),
@@ -1815,8 +1819,13 @@ class RGDOrchestrator:
                 "closed_loop_release_revalidation_a_pass": bool(release["a_pass"]),
                 "closed_loop_release_revalidation_h_pass": bool(release["h_pass"]),
                 "closed_loop_release_revalidation_n_pass": bool(release["n_pass"]),
+                "closed_loop_release_revalidation_n_required": bool(
+                    release["n_required"]
+                ),
                 "closed_loop_release_revalidation_all_pass": bool(
-                    release["a_pass"] and release["h_pass"] and release["n_pass"]
+                    release["a_pass"]
+                    and release["h_pass"]
+                    and (release["n_pass"] or not release["n_required"])
                 ),
                 "closed_loop_release_action_alignment_evaluated": bool(
                     release["alignment_evaluated"]

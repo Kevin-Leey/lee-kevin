@@ -14,46 +14,48 @@ Database file #1: references.bib
 -- http://www.michaelshell.org/tex/ieeetran/bibtex/
 -- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
 ** IEEEtran BST control entry "bst:etal" detected.
+Warning--empty journal in lesort2018highwayenv
 
 Done.
-You've used 32 entries,
+You've used 33 entries,
             4087 wiz_defined-function locations,
-            992 strings with 14219 characters,
-and the built_in function-call counts, 26687 in all, are:
-= -- 2135
-> -- 633
-< -- 251
-+ -- 389
-- -- 139
-* -- 1289
-:= -- 3811
-add.period$ -- 62
-call.type$ -- 32
-change.case$ -- 36
-chr.to.int$ -- 619
-cite$ -- 32
-duplicate$ -- 1844
-empty$ -- 2119
-format.name$ -- 129
-if$ -- 6232
+            999 strings with 14673 characters,
+and the built_in function-call counts, 27712 in all, are:
+= -- 2192
+> -- 656
+< -- 265
++ -- 413
+- -- 148
+* -- 1353
+:= -- 3959
+add.period$ -- 74
+call.type$ -- 33
+change.case$ -- 33
+chr.to.int$ -- 652
+cite$ -- 34
+duplicate$ -- 1933
+empty$ -- 2213
+format.name$ -- 134
+if$ -- 6491
 int.to.chr$ -- 0
-int.to.str$ -- 31
-missing$ -- 312
-newline$ -- 118
-num.names$ -- 31
-pop$ -- 650
+int.to.str$ -- 32
+missing$ -- 308
+newline$ -- 119
+num.names$ -- 32
+pop$ -- 638
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 4
-skip$ -- 2107
+skip$ -- 2147
 stack$ -- 0
-substring$ -- 1557
-swap$ -- 1559
-text.length$ -- 48
+substring$ -- 1641
+swap$ -- 1629
+text.length$ -- 51
 text.prefix$ -- 0
 top$ -- 6
-type$ -- 32
-warning$ -- 0
-while$ -- 123
-width$ -- 33
-write$ -- 323
+type$ -- 33
+warning$ -- 1
+while$ -- 127
+width$ -- 34
+write$ -- 326
+(There was 1 warning)

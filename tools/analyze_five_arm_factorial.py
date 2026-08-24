@@ -145,6 +145,7 @@ def _resolve_within(root: Path, relative: Any, field: str) -> Path:
 def _validate_proposal_bank(manifest: Mapping[str, Any]) -> tuple[str, Dict[int, Dict[str, Dict[str, Any]]]]:
     payload = manifest.get("bank_payload")
     require(isinstance(payload, list) and payload, "proposal bank payload is empty")
+    natural_source = str(manifest.get("candidate_source_policy", "") or "") == "natural_rgd_issued"
     digest = str(manifest.get("bank_sha256", "") or "")
     require(len(digest) == 64 and _sha256_json(payload) == digest, "proposal-bank hash drift")
     records_by_seed: Dict[int, Dict[str, Dict[str, Any]]] = {}
@@ -162,14 +163,23 @@ def _validate_proposal_bank(manifest: Mapping[str, Any]) -> tuple[str, Dict[int,
             require(request_id and request_id not in records, f"seed {seed}: duplicate request ID")
             require(frame not in frames, f"seed {seed}: duplicate source frame")
             response = str(record.get("response_text", "") or "")
-            require(
-                hashlib.sha256(response.encode("utf-8")).hexdigest()
-                == str(record.get("response_sha256", "") or ""),
-                f"seed {seed}: proposal response hash drift",
-            )
+            response_digest = str(record.get("response_sha256", "") or "")
+            if natural_source:
+                require(
+                    len(response_digest) == 64
+                    and all(char in "0123456789abcdef" for char in response_digest),
+                    f"seed {seed}: malformed authenticated response hash",
+                )
+            else:
+                require(
+                    hashlib.sha256(response.encode("utf-8")).hexdigest()
+                    == response_digest,
+                    f"seed {seed}: proposal response hash drift",
+                )
             records[request_id] = record
             frames.add(frame)
-        require(bool(records), f"seed {seed}: proposal block is empty")
+        # Natural RGD issuance is sparse by design; zero-query seeds remain in
+        # the paired block and contribute exact zero exposure to every arm.
         records_by_seed[seed] = records
     require(len(records_by_seed) == int(manifest.get("seed_count", -1)), "proposal seed count drift")
     require(

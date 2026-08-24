@@ -487,6 +487,7 @@ def _apply_terminal_request(
                 "a_pass": bool(action_available and not revalidation_enabled),
                 "h_pass": bool(not revalidation_enabled),
                 "n_pass": bool(not revalidation_enabled),
+                "n_required": False,
                 "distinct": bool(int(released) != int(action)),
                 "alignment_evaluated": False,
                 "alignment_pass": bool(not revalidation_enabled),
@@ -512,6 +513,7 @@ def _apply_terminal_request(
             "a_pass",
             "h_pass",
             "n_pass",
+            "n_required",
             "distinct",
             "alignment_evaluated",
             "alignment_pass",
@@ -668,10 +670,16 @@ def _apply_terminal_request(
                 "closed_loop_release_revalidation_n_pass": bool(
                     release_audit["n_pass"]
                 ),
+                "closed_loop_release_revalidation_n_required": bool(
+                    release_audit["n_required"]
+                ),
                 "closed_loop_release_revalidation_all_pass": bool(
                     release_audit["a_pass"]
                     and release_audit["h_pass"]
-                    and release_audit["n_pass"]
+                    and (
+                        release_audit["n_pass"]
+                        or not release_audit["n_required"]
+                    )
                 ),
                 "closed_loop_release_action_alignment_evaluated": bool(
                     release_audit["alignment_evaluated"]

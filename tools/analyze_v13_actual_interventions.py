@@ -16,6 +16,7 @@ import hashlib
 import json
 import math
 import os
+import pickle
 import sys
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -126,6 +127,7 @@ def summarize_release_branches(
         if actual_distinct
         else 0.0
     )
+    rvod = max(0.0, float(oracle_advantage)) if math.isfinite(oracle_advantage) else 0.0
     return {
         "seed": int(event["seed"]),
         "release_frame": int(event["frame"]),
@@ -155,6 +157,7 @@ def summarize_release_branches(
         "oracle_best_advantage": (
             float(oracle_advantage) if math.isfinite(oracle_advantage) else ""
         ),
+        "rvod": float(rvod),
         "oracle_corrective_opportunity": bool(
             oracle_best is not None and oracle_advantage >= float(epsilon)
         ),
@@ -177,8 +180,74 @@ def summarize_release_branches(
     }
 
 
-def _load_release_events(bundle: Path) -> Dict[int, list[Dict[str, Any]]]:
-    root = bundle / "rgd_fixed_policy" / "highway"
+def _group_root(bundle: Path, group: str, layout: str) -> Path:
+    if str(layout) == "factorial":
+        return bundle / str(group)
+    return bundle / str(group) / "highway"
+
+
+def _physical_frame_path(bundle: Path, seed: int, *, group: str, layout: str) -> Path:
+    episode_root = _group_root(bundle, group, layout) / f"seed_{seed}" / f"ep_{seed}"
+    candidates = (
+        episode_root / f"physical_frames_{seed}.json",
+        episode_root / f"highway_{seed}_physical_frames.json",
+    )
+    for path in candidates:
+        if path.is_file():
+            return path
+    return candidates[0]
+
+
+def _release_snapshot_paths(
+    bundle: Path, seed: int, *, group: str, layout: str
+) -> tuple[Path, Path]:
+    snapshot_root = _group_root(bundle, group, layout) / f"seed_{seed}" / "release_snapshots"
+    stem = f"release_snapshots_highway_{seed}_{seed}"
+    return snapshot_root / f"{stem}.pkl", snapshot_root / f"{stem}.json"
+
+
+def _load_online_release_snapshots(
+    bundle: Path,
+    seed: int,
+    events: Sequence[Mapping[str, Any]],
+    *,
+    group: str,
+    layout: str,
+) -> Optional[Dict[str, Any]]:
+    bundle_path, manifest_path = _release_snapshot_paths(
+        bundle, seed, group=group, layout=layout
+    )
+    if not bundle_path.is_file() or not manifest_path.is_file():
+        return None
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if str(manifest.get("bundle_sha256", "")) != _file_sha256(bundle_path):
+        raise RuntimeError(f"seed {seed}: release-snapshot bundle SHA256 mismatch")
+    with bundle_path.open("rb") as handle:
+        payload = pickle.load(handle)
+    if int(payload.get("episode_id", -1)) != int(seed):
+        raise RuntimeError(f"seed {seed}: release-snapshot episode mismatch")
+    snapshots = dict(payload.get("snapshots", {}) or {})
+    for event in events:
+        request_id = str(event.get("closed_loop_latency_terminal_request_id", "") or "")
+        snapshot = snapshots.get(request_id)
+        if snapshot is None:
+            raise RuntimeError(f"seed {seed}: missing online snapshot for {request_id}")
+        if int(snapshot.frame) != int(event["frame"]):
+            raise RuntimeError(f"seed {seed}: release-snapshot frame mismatch")
+        recorded_identity = str(
+            event.get("closed_loop_release_snapshot_identity_sha256", "") or ""
+        )
+        if recorded_identity and recorded_identity != str(
+            getattr(snapshot, "snapshot_identity_sha256", "") or ""
+        ):
+            raise RuntimeError(f"seed {seed}: release-snapshot identity mismatch")
+    return snapshots
+
+
+def _load_release_events(
+    bundle: Path, *, group: str, layout: str, event_selection: str
+) -> Dict[int, list[Dict[str, Any]]]:
+    root = _group_root(bundle, group, layout)
     selected: Dict[int, list[Dict[str, Any]]] = {}
     for event_path in sorted(root.glob("seed_*/event_logs/event_log_*.json")):
         payload = json.loads(event_path.read_text(encoding="utf-8"))
@@ -187,7 +256,17 @@ def _load_release_events(bundle: Path) -> Dict[int, list[Dict[str, Any]]]:
         for source in payload.get("events", []):
             event = dict(source)
             event["seed"] = seed
-            if canonical_distinct_actuation(event):
+            if event_selection == "guarded":
+                selected_event = canonical_distinct_actuation(event)
+            else:
+                selected_event = bool(event.get("closed_loop_latency_release_event", False))
+                try:
+                    selected_event = selected_event and int(
+                        event["closed_loop_latency_executed_action"]
+                    ) != int(event["closed_loop_execution_state_fast_action"])
+                except (KeyError, TypeError, ValueError):
+                    selected_event = False
+            if selected_event:
                 events.append(event)
         if events:
             selected[seed] = events
@@ -196,15 +275,10 @@ def _load_release_events(bundle: Path) -> Dict[int, list[Dict[str, Any]]]:
     return selected
 
 
-def _physical_frames(bundle: Path, seed: int) -> list[Dict[str, Any]]:
-    path = (
-        bundle
-        / "rgd_fixed_policy"
-        / "highway"
-        / f"seed_{seed}"
-        / f"ep_{seed}"
-        / f"highway_{seed}_physical_frames.json"
-    )
+def _physical_frames(
+    bundle: Path, seed: int, *, group: str, layout: str
+) -> list[Dict[str, Any]]:
+    path = _physical_frame_path(bundle, seed, group=group, layout=layout)
     payload = json.loads(path.read_text(encoding="utf-8"))
     return list(payload.get("frames", []) or [])
 
@@ -347,9 +421,16 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--protocol", type=Path, default=REPO_ROOT / "formal_protocol.yaml")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--scratch-root", type=Path, required=True)
+    parser.add_argument("--group", default="rgd_fixed_policy")
+    parser.add_argument("--layout", choices=("main", "factorial"), default="main")
     parser.add_argument("--horizon", type=int, default=20)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--epsilon", type=float, default=0.02)
+    parser.add_argument(
+        "--event-selection",
+        choices=("guarded", "executed_distinct"),
+        default="guarded",
+    )
     return parser.parse_args(argv)
 
 
@@ -360,25 +441,54 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     args.scratch_root.mkdir(parents=True, exist_ok=True)
 
-    events_by_seed = _load_release_events(args.bundle)
+    events_by_seed = _load_release_events(
+        args.bundle,
+        group=str(args.group),
+        layout=str(args.layout),
+        event_selection=str(args.event_selection),
+    )
     rows: list[Dict[str, Any]] = []
     branch_rows: list[Dict[str, Any]] = []
     for seed, events in sorted(events_by_seed.items()):
-        frames = _physical_frames(args.bundle, seed)
+        online_snapshots = _load_online_release_snapshots(
+            args.bundle,
+            seed,
+            events,
+            group=str(args.group),
+            layout=str(args.layout),
+        )
         cfg = _build_fast_config(args.protocol, seed, args.scratch_root / f"seed_{seed}")
-        targets = [int(event["frame"]) for event in events]
         with open(os.devnull, "w", encoding="utf-8") as sink, redirect_stdout(sink):
-            snapshots, max_position_error = _capture_recorded_prefix_snapshots(
-                cfg,
-                seed,
-                targets,
-                frames,
-                args.scratch_root / f"seed_{seed}",
-            )
+            if online_snapshots is None:
+                frames = _physical_frames(
+                    args.bundle,
+                    seed,
+                    group=str(args.group),
+                    layout=str(args.layout),
+                )
+                targets = [int(event["frame"]) for event in events]
+                snapshots, max_position_error = _capture_recorded_prefix_snapshots(
+                    cfg,
+                    seed,
+                    targets,
+                    frames,
+                    args.scratch_root / f"seed_{seed}",
+                )
+            else:
+                snapshots = online_snapshots
+                max_position_error = 0.0
             for event in events:
                 release_frame = int(event["frame"])
+                request_id = str(
+                    event.get("closed_loop_latency_terminal_request_id", "") or ""
+                )
+                snapshot = (
+                    snapshots[request_id]
+                    if online_snapshots is not None
+                    else snapshots[release_frame]
+                )
                 baseline = _run_branch(
-                    snapshots[release_frame], cfg, seed, None, args.horizon, args.gamma
+                    snapshot, cfg, seed, None, args.horizon, args.gamma
                 )
                 legal_actions = {
                     int(value)
@@ -387,7 +497,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 }
                 candidates = [
                     _run_branch(
-                        snapshots[release_frame],
+                        snapshot,
                         cfg,
                         seed,
                         action,
@@ -401,6 +511,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     event, baseline, candidates, epsilon=args.epsilon
                 )
                 row["prefix_replay_max_position_error_m"] = float(max_position_error)
+                row["release_snapshot_source"] = (
+                    "authenticated_online_snapshot"
+                    if online_snapshots is not None
+                    else "recorded_prefix_reconstruction"
+                )
                 rows.append(row)
                 branch_rows.append({**baseline, "branch_role": "matched_fast"})
                 for candidate in candidates:
@@ -425,6 +540,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     summary = {
         "analysis_version": "actual_slow_matched_release_rollout_v1",
         "estimand": "actual slow proposal utility minus matched-fast utility at the same release snapshot",
+        "event_selection": str(args.event_selection),
         # Keep the event-level count separate from an action change that
         # survives the common safety/action mapping.  A canonical release can
         # be logged as different while becoming execution-equivalent to Fast.
@@ -439,6 +555,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "oracle_opportunity_count": sum(
             bool(row["oracle_corrective_opportunity"]) for row in rows
         ),
+        "rvod_epsilon_sensitivity": {
+            f"{threshold:.2f}": sum(
+                float(row["rvod"]) >= threshold for row in rows
+            )
+            for threshold in (0.01, 0.02, 0.05)
+        },
         "mean_actual_slow_advantage": sum(
             float(row["actual_slow_advantage"]) for row in rows
         )
@@ -454,24 +576,37 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         encoding="utf-8",
     )
 
-    input_paths = [args.protocol, args.bundle / "result_bundle_manifest.json"]
+    bundle_manifest = (
+        args.bundle / "factorial_run_manifest.json"
+        if str(args.layout) == "factorial"
+        else args.bundle / "result_bundle_manifest.json"
+    )
+    group_root = _group_root(args.bundle, str(args.group), str(args.layout))
+    input_paths = [args.protocol, bundle_manifest]
     for seed in sorted(events_by_seed):
-        input_paths.extend(
-            [
-                args.bundle
-                / "rgd_fixed_policy"
-                / "highway"
-                / f"seed_{seed}"
-                / "event_logs"
-                / f"event_log_highway_{seed}_{seed}.json",
-                args.bundle
-                / "rgd_fixed_policy"
-                / "highway"
-                / f"seed_{seed}"
-                / f"ep_{seed}"
-                / f"highway_{seed}_physical_frames.json",
-            ]
+        input_paths.append(
+            group_root
+            / f"seed_{seed}"
+            / "event_logs"
+            / f"event_log_highway_{seed}_{seed}.json"
         )
+        snapshot_paths = _release_snapshot_paths(
+            args.bundle,
+            seed,
+            group=str(args.group),
+            layout=str(args.layout),
+        )
+        if all(path.is_file() for path in snapshot_paths):
+            input_paths.extend(snapshot_paths)
+        else:
+            input_paths.append(
+                _physical_frame_path(
+                    args.bundle,
+                    seed,
+                    group=str(args.group),
+                    layout=str(args.layout),
+                )
+            )
     missing_inputs = [path for path in input_paths if not path.is_file()]
     if missing_inputs:
         raise FileNotFoundError(
@@ -497,11 +632,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "analysis_source": _portable_path(Path(__file__)),
         "analysis_source_sha256": _file_sha256(Path(__file__)),
         "bundle": _portable_path(args.bundle),
+        "group": str(args.group),
+        "layout": str(args.layout),
         "protocol": _portable_path(args.protocol),
         "parameters": {
             "horizon_steps": int(args.horizon),
             "gamma": float(args.gamma),
             "epsilon": float(args.epsilon),
+            "event_selection": str(args.event_selection),
             "prefix_position_tolerance_m": 1e-6,
         },
         "release_events": [
@@ -522,6 +660,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "n_effect_distinct_interventions",
                 "actual_corrective_count",
                 "oracle_opportunity_count",
+                "rvod_epsilon_sensitivity",
                 "mean_actual_slow_advantage",
                 "all_rollout_actions_match_recorded_final",
             )

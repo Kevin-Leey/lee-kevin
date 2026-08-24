@@ -28,10 +28,11 @@
 
 \title{RGD-Driver: Release-Aware Gated Deliberation for Large Language Models in Closed-Loop Autonomous Driving}
 
-\author{LiYi Xie}
+\author{Liyi Xie, Chuyue Zeng, Zhonghui Yang, Bao Zhao, Jianwei Chen,\\
+Shuang Huang, Xuan Li, and Fang Deng,~\IEEEmembership{Fellow,~IEEE}}
 
 \markboth{IEEE Transactions on Vehicular Technology}%
-{LiYi Xie: RGD-Driver}
+{Xie \MakeLowercase{\textit{et al.}}: RGD-Driver}
 
 \begin{document}
 \maketitle
@@ -282,8 +283,10 @@ domain integrity guard $F_t$ requires consistent action-domain agreement and
 a nonempty feasible-alternative set
 $\mathcal D_t=\{a\in\mathcal A(s_t)\setminus\{a_t^f\}:c_t(a)\leq\kappa_c\}$,
 where $\kappa_c\in(0,1]$ is the recovery-cost feasibility threshold. We set
-$F_t=0$, and no slow request is issued whenever
-$\mathcal D_t=\varnothing$.
+$F_t=1$ when the cost inputs are valid, the action domains agree, and
+$\mathcal D_t\ne\varnothing$, and $F_t=0$ otherwise. If
+$\mathcal D_t=\varnothing$, the minimum in
+\eqref{eq:test_H} is not evaluated and no slow request is issued.
 
 Delay feasibility is characterized by control frequency $f>0$, predicted latency
 $\widehat\tau_t$, critical maneuver window $T_t^{\mathrm{crit}}$ (estimated
@@ -687,11 +690,7 @@ and $N$, and joint removal of $H$ and $N$. All conditions replay the same
 gate-independent proposal source over 20 held-out seeds at a fixed 1.7-s
 delay. The action mapper, release rule, safety projection, budget, and
 cooldown remain unchanged, so each comparison removes only the named
-admission predicate. The shared bank is frozen from a Qwen3-8B Always Slow source that does not
-read the evaluated gate. Each record binds the source frame, raw action,
-response outcome, measured latency, and response hash. All arms replay the
-same bank and recompute the Fast action at every frame. Gate decisions are
-completed before proposal fields are exposed to an arm.
+admission predicate.
 
 Fig.~\ref{fig:formal_components}(a) traces the 70 synchronized candidates
 through the serial admission stages. Full RGD retains 49 candidates after

@@ -61,6 +61,7 @@ DEFAULT_SOURCE = Path(
     "main_v12_20260721/always_slow/highway"
 )
 DEFAULT_PROPOSAL_SOURCE_POLICY = "scheduled_always_slow"
+NATURAL_RGD_PROPOSAL_SOURCE_POLICY = "natural_rgd_issued"
 LEGACY_PROPOSAL_SOURCE_POLICY = "legacy_gate_positive_diagnostic"
 DISTINCT_ACTION_METRIC_STAGE = (
     "post_release_guard_pre_final_safety_projection"
@@ -90,6 +91,7 @@ FORMAL_PROPOSAL_SOURCE_EXECUTION = {
     "expected_policy_steps": 300.0,
 }
 FORMAL_PROPOSAL_SOURCE_GROUP = "always_slow"
+NATURAL_RGD_PROPOSAL_SOURCE_GROUP = "rgd_fixed_policy"
 FORMAL_PROPOSAL_SOURCE_ENV = "highway-v0"
 FORMAL_PROPOSAL_SOURCE_SCENARIO = "highway"
 FORMAL_PROPOSAL_SOURCE_PROVIDER = "siliconflow"
@@ -102,6 +104,15 @@ _FORMAL_SOURCE_IDENTITY_FIELDS = (
     "config_hash",
     "source_hash",
 )
+
+
+def _proposal_source_group(source_policy: str) -> str:
+    policy = str(source_policy)
+    if policy == DEFAULT_PROPOSAL_SOURCE_POLICY:
+        return FORMAL_PROPOSAL_SOURCE_GROUP
+    if policy == NATURAL_RGD_PROPOSAL_SOURCE_POLICY:
+        return NATURAL_RGD_PROPOSAL_SOURCE_GROUP
+    raise ValueError(f"unsupported formal proposal source policy: {policy!r}")
 
 
 def _require(condition: bool, message: str) -> None:
@@ -399,6 +410,7 @@ def _validate_formal_factorial_preflight(
     latency_profile: str,
     fixed_latency_steps: Optional[int],
     result_root: Path,
+    source_policy: str = NATURAL_RGD_PROPOSAL_SOURCE_POLICY,
 ):
     """Validate the complete v13 five-arm contract before writing artifacts."""
 
@@ -423,8 +435,10 @@ def _validate_formal_factorial_preflight(
     declared_fixed = contract.get("fixed_delay_steps")
     if fixed_latency_steps != declared_fixed:
         raise ValueError("formal five-arm fixed-delay contract drift")
-    if contract.get("candidate_source_policy") != DEFAULT_PROPOSAL_SOURCE_POLICY:
+    if contract.get("candidate_source_policy") != str(source_policy):
         raise ValueError("formal five-arm candidate-source contract drift")
+    if contract.get("proposal_source_group") != _proposal_source_group(source_policy):
+        raise ValueError("formal five-arm proposal-source group drift")
     group_cfg = _factorial_group_config(
         protocol,
         FORMAL_FACTORIAL_ARMS[0],
@@ -524,7 +538,9 @@ def _validate_formal_execution_fields(
         )
 
 
-def _formal_bundle_manifest_path(source_root: Path) -> tuple[Path, Path]:
+def _formal_bundle_manifest_path(
+    source_root: Path, *, source_group: str
+) -> tuple[Path, Path]:
     root = Path(source_root).resolve()
     candidates = [
         parent / "result_bundle_manifest.json"
@@ -540,7 +556,7 @@ def _formal_bundle_manifest_path(source_root: Path) -> tuple[Path, Path]:
     bundle_root = manifest_path.parent.resolve()
     expected_root = (
         bundle_root
-        / FORMAL_PROPOSAL_SOURCE_GROUP
+        / str(source_group)
         / FORMAL_PROPOSAL_SOURCE_SCENARIO
     ).resolve()
     _require(
@@ -562,12 +578,12 @@ def _read_csv_objects(path: Path) -> list[Dict[str, str]]:
 
 
 def _validate_formal_source_cell_payload(
-    payload: Mapping[str, Any], *, seed: int, artifact: str
+    payload: Mapping[str, Any], *, seed: int, artifact: str, source_group: str
 ) -> Mapping[str, Any]:
     context = f"seed {seed} {artifact}"
     _require(
         str(payload.get("protocol_name", "") or "")
-        == FORMAL_PROPOSAL_SOURCE_GROUP,
+        == str(source_group),
         f"{context} protocol name mismatch",
     )
     _require(
@@ -599,7 +615,7 @@ def _validate_formal_source_cell_payload(
     config = dict(config)
     _require(
         str(config.get("protocol_name", "") or "")
-        == FORMAL_PROPOSAL_SOURCE_GROUP,
+        == str(source_group),
         f"{context} config protocol name mismatch",
     )
     _require(
@@ -636,13 +652,14 @@ def _validate_formal_source_cell_payload(
         ),
     }
     _validate_formal_execution_fields(config_execution, context=f"{context} config")
-    routing = config.get("system_routing")
-    _require(
-        isinstance(routing, Mapping)
-        and routing.get("simple") == "slow"
-        and routing.get("complex") == "slow",
-        f"{context} must force slow routing",
-    )
+    if str(source_group) == FORMAL_PROPOSAL_SOURCE_GROUP:
+        routing = config.get("system_routing")
+        _require(
+            isinstance(routing, Mapping)
+            and routing.get("simple") == "slow"
+            and routing.get("complex") == "slow",
+            f"{context} must force slow routing",
+        )
 
     protocol_manifest = payload.get("protocol_manifest")
     _require(
@@ -659,7 +676,7 @@ def _validate_formal_source_cell_payload(
     )
     _require(
         str(protocol_manifest.get("selected_group", "") or "")
-        == FORMAL_PROPOSAL_SOURCE_GROUP,
+        == str(source_group),
         f"{context} selected group mismatch",
     )
     _require(
@@ -689,12 +706,17 @@ def _validate_formal_source_cell_payload(
 
 
 def _validate_formal_proposal_source_bundle(
-    source_root: Path, seeds: Sequence[int]
+    source_root: Path,
+    seeds: Sequence[int],
+    *,
+    source_group: str = FORMAL_PROPOSAL_SOURCE_GROUP,
 ) -> Dict[str, Any]:
     """Close a proposal stream to its formal bundle, cell, and run-row identity."""
     expected_partition, seed_values = _formal_seed_partition(seeds)
     root = Path(source_root).resolve()
-    bundle_root, manifest_path = _formal_bundle_manifest_path(root)
+    bundle_root, manifest_path = _formal_bundle_manifest_path(
+        root, source_group=source_group
+    )
     manifest = _read_json_object(manifest_path)
     _require(
         str(manifest.get("bundle_kind", "") or "") == "formal_run",
@@ -711,13 +733,13 @@ def _validate_formal_proposal_source_bundle(
         )
     groups = manifest.get("groups")
     _require(
-        isinstance(groups, list) and FORMAL_PROPOSAL_SOURCE_GROUP in groups,
-        "formal proposal source bundle is missing always_slow",
+        isinstance(groups, list) and str(source_group) in groups,
+        f"formal proposal source bundle is missing {source_group}",
     )
     matrix = manifest.get("group_env_matrix")
     _require(
         isinstance(matrix, Mapping)
-        and list(matrix.get(FORMAL_PROPOSAL_SOURCE_GROUP, []) or [])
+        and list(matrix.get(str(source_group), []) or [])
         == [FORMAL_PROPOSAL_SOURCE_ENV],
         "formal proposal source always_slow environment matrix mismatch",
     )
@@ -763,7 +785,7 @@ def _validate_formal_proposal_source_bundle(
         isinstance(horizon_matrix, Mapping),
         "formal proposal source has no execution horizon matrix",
     )
-    group_horizons = horizon_matrix.get(FORMAL_PROPOSAL_SOURCE_GROUP)
+    group_horizons = horizon_matrix.get(str(source_group))
     _require(
         isinstance(group_horizons, Mapping),
         "formal proposal source has no always_slow execution horizon",
@@ -779,8 +801,8 @@ def _validate_formal_proposal_source_bundle(
 
     run_rows_path = (
         bundle_root
-        / FORMAL_PROPOSAL_SOURCE_GROUP
-        / f"{FORMAL_PROPOSAL_SOURCE_GROUP}_run_rows.csv"
+        / str(source_group)
+        / f"{source_group}_run_rows.csv"
     )
     rows = _read_csv_objects(run_rows_path)
     _require(
@@ -790,7 +812,7 @@ def _validate_formal_proposal_source_bundle(
     rows_by_seed: Dict[int, Dict[str, str]] = {}
     for row in rows:
         _require(
-            str(row.get("group", "") or "") == FORMAL_PROPOSAL_SOURCE_GROUP,
+            str(row.get("group", "") or "") == str(source_group),
             "formal proposal source run-row group mismatch",
         )
         _require(
@@ -844,10 +866,16 @@ def _validate_formal_proposal_source_bundle(
         runtime = _read_json_object(runtime_path)
         snapshot = _read_json_object(snapshot_path)
         runtime_config = _validate_formal_source_cell_payload(
-            runtime, seed=seed, artifact="runtime manifest"
+            runtime,
+            seed=seed,
+            artifact="runtime manifest",
+            source_group=source_group,
         )
         snapshot_config = _validate_formal_source_cell_payload(
-            snapshot, seed=seed, artifact="experiment snapshot"
+            snapshot,
+            seed=seed,
+            artifact="experiment snapshot",
+            source_group=source_group,
         )
         _require(
             runtime_config == snapshot_config,
@@ -896,7 +924,10 @@ def _validate_proposal_source(
     source_policy: str = DEFAULT_PROPOSAL_SOURCE_POLICY,
 ) -> None:
     """Verify that a proposal source is independent of the evaluated gate."""
-    if str(source_policy) != DEFAULT_PROPOSAL_SOURCE_POLICY:
+    if str(source_policy) not in {
+        DEFAULT_PROPOSAL_SOURCE_POLICY,
+        NATURAL_RGD_PROPOSAL_SOURCE_POLICY,
+    }:
         if str(source_policy) == LEGACY_PROPOSAL_SOURCE_POLICY:
             return
         raise RuntimeError(f"unsupported proposal source policy: {source_policy!r}")
@@ -912,13 +943,17 @@ def _validate_proposal_source(
     config = snapshot.get("config")
     if not isinstance(config, Mapping):
         raise RuntimeError("source snapshot has no configuration")
-    if str(config.get("protocol_name", "") or "") != "always_slow":
-        raise RuntimeError("gate-independent proposal source must be always_slow")
-    routing = config.get("system_routing")
-    if not isinstance(routing, Mapping) or (
-        routing.get("simple") != "slow" or routing.get("complex") != "slow"
-    ):
-        raise RuntimeError("gate-independent proposal source must force slow routing")
+    expected_group = _proposal_source_group(source_policy)
+    if str(config.get("protocol_name", "") or "") != expected_group:
+        if str(source_policy) == DEFAULT_PROPOSAL_SOURCE_POLICY:
+            raise RuntimeError("gate-independent proposal source must be always_slow")
+        raise RuntimeError("natural RGD proposal source must be rgd_fixed_policy")
+    if str(source_policy) == DEFAULT_PROPOSAL_SOURCE_POLICY:
+        routing = config.get("system_routing")
+        if not isinstance(routing, Mapping) or (
+            routing.get("simple") != "slow" or routing.get("complex") != "slow"
+        ):
+            raise RuntimeError("gate-independent proposal source must force slow routing")
 
 
 def _query_event(
@@ -943,6 +978,8 @@ def _query_event(
             return False
     if str(source_policy) == LEGACY_PROPOSAL_SOURCE_POLICY:
         return bool(row.get("closed_loop_latency_eligible", False))
+    if str(source_policy) == NATURAL_RGD_PROPOSAL_SOURCE_POLICY:
+        return bool(row.get("closed_loop_latency_issuance_event", False))
     raise ValueError(f"unsupported proposal source policy: {source_policy!r}")
 
 
@@ -1136,6 +1173,8 @@ def _native_source_rows(
         raise RuntimeError(
             f"seed {seed}: native proposal source contains dropped requests: {sorted(dropped)}"
         )
+    if not issued and str(source_policy) == NATURAL_RGD_PROPOSAL_SOURCE_POLICY:
+        return []
     if not issued:
         raise RuntimeError(f"seed {seed}: native proposal source has no issuance events")
     if set(terminal) != set(issued):
@@ -1344,20 +1383,21 @@ def _proposal_manifest(
     source_policy: str = DEFAULT_PROPOSAL_SOURCE_POLICY,
 ) -> Dict[str, Any]:
     """Return the authenticated portable proposal-bank manifest."""
-    if str(source_policy) != DEFAULT_PROPOSAL_SOURCE_POLICY:
-        raise ValueError("paper-facing factorial requires scheduled_always_slow")
+    source_group = _proposal_source_group(source_policy)
     root = Path(source_root).resolve()
     payload = canonical_proposal_bank_payload(bank)
     seeds = tuple(int(block["seed"]) for block in payload)
     if not seeds or tuple(sorted(seeds)) != seeds:
         raise ValueError("proposal-bank seeds must be nonempty and sorted")
     _validate_formal_proposal_schedule(bank)
-    formal_source = _validate_formal_proposal_source_bundle(root, seeds)
+    formal_source = _validate_formal_proposal_source_bundle(
+        root, seeds, source_group=source_group
+    )
     source_artifacts = []
     latency_samples = []
     for seed in seeds:
         records = dict(bank[seed])
-        if not records:
+        if not records and str(source_policy) != NATURAL_RGD_PROPOSAL_SOURCE_POLICY:
             raise ValueError(f"proposal bank seed {seed} has no candidates")
         event_path, reasoning_path, snapshot_path = _source_paths(root, seed)
         _validate_proposal_source(snapshot_path, seed=seed, source_policy=source_policy)
@@ -1391,8 +1431,10 @@ def _proposal_manifest(
         "schema": FACTORIAL_PROPOSAL_SCHEMA,
         "factorial_replay_version": FACTORIAL_REPLAY_VERSION,
         "source_root": str(root),
-        "candidate_source_policy": DEFAULT_PROPOSAL_SOURCE_POLICY,
-        "candidate_source_gate_independent": True,
+        "candidate_source_policy": str(source_policy),
+        "candidate_source_gate_independent": bool(
+            str(source_policy) == DEFAULT_PROPOSAL_SOURCE_POLICY
+        ),
         "latency_profile": str(latency_profile),
         "empirical_latency_profile": public_profile,
         "bank_sha256": proposal_bank_sha256(bank),
@@ -1401,7 +1443,7 @@ def _proposal_manifest(
         "formal_source_bundle": {
             "bundle_kind": "formal_run",
             "partition": formal_source["partition"],
-            "group": FORMAL_PROPOSAL_SOURCE_GROUP,
+            "group": source_group,
             "environment": FORMAL_PROPOSAL_SOURCE_ENV,
             **FORMAL_PROPOSAL_SOURCE_VERSIONS,
             **{
@@ -1934,7 +1976,7 @@ def _run_arm_seed(
     from dilu.safety.unified_safety import UnifiedSafetySystem
     from dilu.scenario import create_scenario
     seed = _strict_int(seed, "factorial seed", nonnegative=True)
-    if not proposals:
+    if not proposals and str(proposal_source_policy) != NATURAL_RGD_PROPOSAL_SOURCE_POLICY:
         raise ValueError(f"seed {seed}: factorial proposal block is empty")
     expected_frames = {int(frame) for frame in proposals}
     if expected_frames != {int(record.source_frame) for record in proposals.values()}:
@@ -2128,7 +2170,9 @@ def _run_arm_seed(
                 "seed": seed,
                 "proposal_bank_sha256": str(bank_sha256),
                 "candidate_source_policy": str(proposal_source_policy),
-                "candidate_source_gate_independent": True,
+                "candidate_source_gate_independent": bool(
+                    str(proposal_source_policy) == DEFAULT_PROPOSAL_SOURCE_POLICY
+                ),
                 **execution_horizon.as_manifest(),
                 "frames_executed": len(runtimes),
                 **outcomes,
@@ -2193,6 +2237,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--protocol", type=Path, default=Path("formal_protocol.yaml"))
     parser.add_argument("--source-root", type=Path, default=DEFAULT_SOURCE)
+    parser.add_argument(
+        "--source-policy",
+        choices=(DEFAULT_PROPOSAL_SOURCE_POLICY, NATURAL_RGD_PROPOSAL_SOURCE_POLICY),
+        default=DEFAULT_PROPOSAL_SOURCE_POLICY,
+    )
     parser.add_argument("--result-root", type=Path, required=True)
     parser.add_argument("--seed-start", type=int, default=5000)
     parser.add_argument("--seeds", type=int, default=30)
@@ -2247,6 +2296,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         seeds=seeds,
         latency_profile=str(args.latency_profile),
         fixed_latency_steps=args.fixed_delay_steps,
+        source_policy=str(args.source_policy),
         result_root=Path(args.result_root),
     )
     bank = load_proposal_bank(
@@ -2254,14 +2304,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         seeds,
         latency_profile=args.latency_profile,
         fixed_latency_steps=args.fixed_delay_steps,
-        source_policy=DEFAULT_PROPOSAL_SOURCE_POLICY,
+        source_policy=str(args.source_policy),
     )
     proposal_manifest = _proposal_manifest(
         bank,
         source_root=args.source_root,
         latency_profile=args.latency_profile,
         fixed_latency_steps=args.fixed_delay_steps,
-        source_policy=DEFAULT_PROPOSAL_SOURCE_POLICY,
+        source_policy=str(args.source_policy),
     )
     bank_digest = str(proposal_manifest["bank_sha256"])
     result_root = Path(args.result_root)
@@ -2276,7 +2326,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "seed": seed,
             "proposals": bank[seed],
             "bank_sha256": bank_digest,
-            "proposal_source_policy": DEFAULT_PROPOSAL_SOURCE_POLICY,
+            "proposal_source_policy": str(args.source_policy),
             "arms": arms,
             "verbose": bool(args.verbose),
         }
@@ -2332,8 +2382,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 if args.fixed_delay_steps is not None
                 else None
             ),
-            "candidate_source_policy": DEFAULT_PROPOSAL_SOURCE_POLICY,
-            "candidate_source_gate_independent": True,
+            "candidate_source_policy": str(args.source_policy),
+            "candidate_source_gate_independent": bool(
+                str(args.source_policy) == DEFAULT_PROPOSAL_SOURCE_POLICY
+            ),
             "seed_start": int(args.seed_start),
             "seed_count": int(args.seeds),
             "arms": [asdict(arm) for arm in arms],

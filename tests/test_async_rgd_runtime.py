@@ -580,6 +580,7 @@ def test_release_evaluator_enforces_all_gates_margin_and_cost_provenance():
     assert accepted["a_pass"] is True
     assert accepted["h_pass"] is True
     assert accepted["n_pass"] is True
+    assert accepted["n_required"] is True
     assert accepted["distinct"] is True
     assert accepted["alignment_evaluated"] is True
     assert accepted["alignment_pass"] is True
@@ -599,7 +600,9 @@ def test_release_evaluator_enforces_all_gates_margin_and_cost_provenance():
 
     no_n = copy.deepcopy(assessment)
     no_n["state_need_pass"] = False
-    assert _evaluate(orchestrator, state, no_n, rad)["n_pass"] is False
+    no_n_result = _evaluate(orchestrator, state, no_n, rad)
+    assert no_n_result["n_pass"] is False
+    assert no_n_result["release_pass"] is False
 
     same_action = copy.deepcopy(assessment)
     same_action["raw_feasible_alternative_actions"] = [int(ActionType.IDLE)]
@@ -636,6 +639,21 @@ def test_release_evaluator_enforces_all_gates_margin_and_cost_provenance():
     assert source_rejected["cost_provenance_pass"] is False
     assert source_rejected["alignment_evaluated"] is False
     assert source_rejected["release_pass"] is False
+
+
+def test_release_evaluator_can_keep_need_as_an_audit_only_query_signal():
+    orchestrator, assessment, rad = _release_evaluator()
+    revalidation = orchestrator.config["closed_loop_latency_replay"][
+        "release_opportunity_revalidation"
+    ]
+    revalidation["require_state_need"] = False
+    assessment["state_need_pass"] = False
+
+    result = _evaluate(orchestrator, _state(3), assessment, rad)
+
+    assert result["n_pass"] is False
+    assert result["n_required"] is False
+    assert result["release_pass"] is True
 
 
 def test_driver_pending_snapshot_rules_and_restore_are_atomic():

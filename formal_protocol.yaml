@@ -65,6 +65,17 @@ tvt_submission_contract:
     branch_continuation: complete_fast_policy
     bootstrap_unit: simulator_seed
     bootstrap_draws: 20000
+  release_validation:
+    state_need_role: query_admission_only
+    required_predicates:
+      - current_legal_action
+      - exact_action_domain_and_cost_provenance
+      - absolute_feasibility_and_maneuver_support
+      - corrective_recovery_headroom
+      - contemporaneous_fast_action_distinctness
+      - recovery_cost_margin
+    audit_only_predicates: [state_need]
+    failure_policy: fail_closed_to_contemporaneous_fast_action
   query_release_factorial:
     artifact: results/highway_result/formal_run/query_release_factorial
     analysis_artifact: results/highway_result/formal_run/query_release_factorial_analysis
@@ -74,8 +85,8 @@ tvt_submission_contract:
     seed_range: {start: 5000, end: 5029, count: 30}
     environment: highway-v0
     episodes_per_cell: 1
-    proposal_source_group: always_slow
-    candidate_source_policy: scheduled_always_slow
+    proposal_source_group: rgd_fixed_policy
+    candidate_source_policy: natural_rgd_issued
     latency_profile: frozen
     fixed_delay_steps: null
     execution_contract: *v13_highway_execution
@@ -90,6 +101,20 @@ tvt_submission_contract:
       confidence_interval: paired_seed_bootstrap_95_percent
       primary_family: full_minus_fast_only_across_prespecified_metrics
       multiplicity: holm
+    matched_intervention_audit:
+      estimand: actual_slow_minus_matched_fast_utility_at_same_release_snapshot
+      guarded_group: release_only
+      no_guard_group: neither
+      guarded_artifact: results/highway_result/formal_run/query_release_factorial_interventions
+      no_guard_artifact: results/highway_result/formal_run/query_release_factorial_interventions_no_guard
+      snapshot_source: authenticated_online_release_snapshot
+      event_selection:
+        guarded: release_authorized_and_post_projection_distinct
+        no_guard: post_projection_distinct
+      horizon_steps: 20
+      gamma: 0.99
+      corrective_margin: 0.02
+      continuation: complete_fast_policy
   component_ablation:
     artifact: results/highway_result/formal_run/component_ablation
     analysis_artifact: results/highway_result/formal_run/component_ablation_analysis
@@ -320,12 +345,42 @@ tvt_submission_contract:
           release_contract_version: action_cost_alignment_v2
           factorial_design: five_arm
           latency_profile: frozen
-          candidate_source_policy: scheduled_always_slow
-          candidate_source_gate_independent: true
+          candidate_source_policy: natural_rgd_issued
+          candidate_source_gate_independent: false
           episode_duration_s: 30
           policy_frequency_hz: 10
           simulation_frequency_hz: 10
           expected_policy_steps: 300
+      query_release_intervention_audit:
+        paper_facing: true
+        status: accepted_matched_release_state_evidence
+        method_version: action_aligned_release_gate_v13
+        source_artifact: results/highway_result/formal_run/query_release_factorial
+        guarded_artifact: results/highway_result/formal_run/query_release_factorial_interventions
+        no_guard_artifact: results/highway_result/formal_run/query_release_factorial_interventions_no_guard
+        manifest: actual_intervention_manifest.json
+        data_files:
+          - actual_intervention_effects.csv
+          - actual_intervention_branches.csv
+          - actual_intervention_summary.json
+        guarded_required_manifest_values:
+          accepted: true
+          analysis_version: actual_slow_matched_release_rollout_v1
+          group: release_only
+          parameters:
+            horizon_steps: 20
+            gamma: 0.99
+            epsilon: 0.02
+            event_selection: guarded
+        no_guard_required_manifest_values:
+          accepted: true
+          analysis_version: actual_slow_matched_release_rollout_v1
+          group: neither
+          parameters:
+            horizon_steps: 20
+            gamma: 0.99
+            epsilon: 0.02
+            event_selection: executed_distinct
       transfer_results:
         paper_facing: false
         status: auxiliary_legacy_transfer_not_used_for_v13_core_claims
@@ -592,6 +647,8 @@ runtime_config:
     delay_steps: 0
     target_systems:
       - slow
+    release_opportunity_revalidation:
+      require_state_need: false
   safety_stack_mode: unified_arbitration
   success_metric_mode: completion_threshold
   QWEN_REQUEST_TIMEOUT_S: 8.0
@@ -840,6 +897,7 @@ groups:
       closed_loop_latency_replay:
         release_opportunity_revalidation:
           enable: true
+          require_state_need: false
           action_cost_alignment:
             enable: true
             cost_margin: 0.02
@@ -865,6 +923,7 @@ groups:
       closed_loop_latency_replay:
         release_opportunity_revalidation:
           enable: true
+          require_state_need: false
           action_cost_alignment:
             enable: true
             cost_margin: 0.02
@@ -1178,3 +1237,90 @@ paper_baselines:
     - avg_speed_over_success
     - avg_runtime_per_frame
   performance_order: *supported_groups
+
+# PADriver Table-I reproduction contract. The three upstream repositories are
+# retained verbatim under reproduction/<method>/official_repo. Their native
+# tasks use different datasets or simulators, so each interface is adapted at
+# the observation/action boundary to the PAD-Highway setting in PADriver Sec. 3.1.
+external_method_reproduction:
+  protocol_id: padriver_pad_highway_reproduction_20260810
+  result_root: results/reproduce
+  execution_status: complete_qwen3_8b_transfer_1hz_policy_10hz_physics
+  source_setting:
+    paper: "PADriver: Towards Personalized Autonomous Driving"
+    arxiv: https://arxiv.org/abs/2505.05240
+    source_location: "Sec. 3.1 (Basic Setting), Sec. 3.3, and Table 1"
+    benchmark: PAD-Highway
+    frequency_interpretation: "10 Hz denotes the simulator/data sampling frequency; policy_frequency remains the Highway-Env default of 1 Hz because Sec. 3.1 states that all nonlisted settings follow the default configuration."
+    source_frequency_contract: "10 physics frames per 1 policy step; 300 physics frames and 30 policy decisions per 30-s episode"
+    source_metric_scope: "Dis. and Spe. are aggregated over successful 30-s trajectories; Saf. and Kep. follow the same successful-trajectory reporting subset; Suc. is counted over 30 seeds."
+  common_transfer_contract:
+    environment: highway-v0
+    lanes_count: 4
+    vehicle_count: 30
+    vehicles_density: 2.0
+    episode_duration_s: 30
+    simulation_frequency_hz: 10
+    policy_frequency_hz: 1
+    high_level_decision_frequency_hz: 1
+    maximum_speed_mps: 30.0
+    highway_env_nonlisted_settings: default
+    request_timeout_s: 60
+    retry_policy:
+      max_attempts: 4
+      initial_backoff_s: 15
+      retryable_conditions: [http_429, http_5xx, request_timeout]
+    discrete_action_application: one_DiscreteMetaAction_per_1Hz_policy_step_held_across_10_physics_substeps
+    adapter_contract_version: upstream_interface_bridge_v2
+    failure_record_policy: per_seed_status_failed_with_resume_retry
+    seeds: {start: 0, end: 29, count: 30}
+    action_space: DiscreteMetaAction
+    target_speeds_mps: [20.0, 25.0, 30.0]
+    success_definition: completed_30_s_without_collision
+    safe_distance_threshold_m: 5.0
+    metric_contract:
+      distance_m: mean_accumulated_ego_distance_over_successful_30_s_episodes_using_10Hz_physics_trace
+      speed_kmh: pooled_ego_speed_over_10Hz_physics_frames_of_successful_30_s_episodes
+      safe_distance_rate: pooled_fraction_of_successful_10Hz_frames_with_leading_vehicle_gap_at_least_5_m
+      keep_rate: pooled_fraction_of_successful_1Hz_policy_decisions_with_DiscreteMetaAction_IDLE
+      completion_count: collision_free_30_s_episodes_over_30_seeds
+      runtime_s_per_frame: total_wall_clock_episode_time_over_realized_1Hz_policy_decisions
+    slow_reasoner:
+      provider: siliconflow
+      model: Qwen/Qwen3-8B
+      temperature: 0.0
+      enable_thinking: false
+      chat_endpoint_from: config.yaml
+      transport_proxy_from: config.yaml
+      driving_with_llms_max_tokens: 256
+      gpt_driver_max_tokens: 128
+      dilu_max_tokens: 256
+  upstream_methods:
+    driving_with_llms:
+      repository: https://github.com/wayveai/Driving-with-LLMs
+      commit: fb323d6d11dd6b7fbd220f13238a8430ddc6b69c
+      upstream_task: object_level_vector_to_action_prediction_in_wayve_2d_simulator
+      upstream_model: LLaMA-7B_with_vector_encoder_and_LoRA
+      upstream_artifacts_required_for_native_evaluation: [vqa_test_1k, LLaMA-7B, stage2_checkpoint]
+      highway_env_adapter: object_level_vector_serializer_and_continuous_control_to_DiscreteMetaAction_mapper
+    gpt_driver:
+      repository: https://github.com/PointsCoder/GPT-Driver
+      commit: 6294144d196df7d8a447242ebe7c5e5a1d0ff565
+      upstream_task: nuScenes_open_loop_3_s_six_waypoint_motion_planning
+      upstream_model: fine_tuned_gpt_3_5_turbo
+      upstream_artifacts_required_for_native_evaluation: [cached_nuscenes_info, UniAD_motion_cache, fine_tuned_OpenAI_model]
+      highway_env_adapter: nuScenes_prompt_payload_serializer_and_six_waypoint_to_DiscreteMetaAction_mapper
+      upstream_prompt_variant: system_message_short
+    dilu:
+      repository: https://github.com/PJLab-ADG/DiLu
+      commit: 74c4aa96a8f5816731d5eb5cc1d93add30674287
+      upstream_task: Highway_Env_closed_loop_knowledge_driven_discrete_decision_making
+      upstream_model: GPT_3_5_reasoning_with_GPT_4_reflection_optional
+      upstream_default_config:
+        few_shot_num: 3
+        simulation_duration_steps: 20
+        vehicle_count: 15
+        vehicles_density: 2.0
+      highway_env_adapter: SiliconFlow_Qwen_chat_and_embedding_backend_with_upstream_scenario_prompt_action_parser_and_memory_content
+      response_transport: explicit_upstream_Response_to_user_delimiter
+      trace_storage: results/reproduce/dilu/raw/seed_xxxx/official_trace.db
