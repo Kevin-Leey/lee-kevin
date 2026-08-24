@@ -22,18 +22,18 @@
 \BIBdecl
 
 \bibitem{wen2024dilu}
-L.~Wen \emph{et~al.}, ``DiLu: A knowledge-driven approach to autonomous driving
-  with large language models,'' in \emph{Proc. Int. Conf. Learn. Represent.
-  (ICLR)}, vol. 2024, 2024, pp. 34\,503--34\,522.
+L.~Wen \emph{et~al.}, ``{DiLu}: A knowledge-driven approach to autonomous
+  driving with large language models,'' in \emph{Proc. Int. Conf. Learn.
+  Represent. (ICLR)}, vol. 2024, 2024, pp. 34\,503--34\,522.
 
 \bibitem{chen2024drivingllms}
-L.~Chen \emph{et~al.}, ``Driving with LLMs: Fusing object-level vector modality
-  for explainable autonomous driving,'' in \emph{Proc. IEEE Int. Conf. Robot.
-  Autom. (ICRA)}, 2024, pp. 14\,093--14\,100.
+L.~Chen \emph{et~al.}, ``Driving with {LLMs}: Fusing object-level vector
+  modality for explainable autonomous driving,'' in \emph{Proc. IEEE Int. Conf.
+  Robot. Autom. (ICRA)}, 2024, pp. 14\,093--14\,100.
 
 \bibitem{mao2023gptdriver}
-J.~Mao, Y.~Qian, J.~Ye, H.~Zhao, and Y.~Wang, ``GPT-Driver: Learning to drive
-  with GPT,'' 2023, arXiv:2310.01415.
+J.~Mao, Y.~Qian, J.~Ye, H.~Zhao, and Y.~Wang, ``{GPT-Driver}: Learning to drive
+  with {GPT},'' arXiv:2310.01415, 2023.
 
 \bibitem{tvtDrivingKnowledge2026}
 D.~Pei, J.~He, K.~Liu, Y.~Wu, Y.~Lei, and X.~Xiao, ``Enhancement of large
@@ -41,14 +41,14 @@ D.~Pei, J.~He, K.~Liu, Y.~Wu, Y.~Lei, and X.~Xiao, ``Enhancement of large
   making,'' \emph{IEEE Trans. Veh. Technol.}, 2026.
 
 \bibitem{shao2024lmdrive}
-H.~Shao \emph{et~al.}, ``LMDrive: Closed-loop end-to-end driving with large
+H.~Shao \emph{et~al.}, ``{LMDrive}: Closed-loop end-to-end driving with large
   language models,'' in \emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern
   Recognit. (CVPR)}, 2024, pp. 15\,120--15\,130.
 
 \bibitem{tvtCtrail2026}
-Z.~Cui \emph{et~al.}, ``C-TRAIL: A commonsense world framework for trajectory
-  planning in autonomous driving,'' \emph{IEEE Trans. Veh. Technol.}, pp. 1--14,
-  2026.
+Z.~Cui \emph{et~al.}, ``{C-TRAIL}: A commonsense world framework for trajectory
+  planning in autonomous driving,'' \emph{IEEE Trans. Veh. Technol.}, pp.
+  1--14, 2026.
 
 \bibitem{titsPolicyTransfer2025}
 J.~Wang, H.~Ren, X.~Zhu, and Z.~Ma, ``Enhancing autonomous vehicle
@@ -56,52 +56,52 @@ J.~Wang, H.~Ren, X.~Zhu, and Z.~Ma, ``Enhancing autonomous vehicle
   \emph{IEEE Trans. Intell. Transp. Syst.}, pp. 1--10, 2025.
 
 \bibitem{wang2024drivedreamer}
-X.~Wang, Z.~Zhu, G.~Huang, X.~Chen, J.~Zhu, and J.~Lu, ``DriveDreamer: Towards
-  real-world-drive world models for autonomous driving,'' in \emph{Proc. Eur.
-  Conf. Comput. Vis. (ECCV)}, 2024, pp. 55--72.
+X.~Wang, Z.~Zhu, G.~Huang, X.~Chen, J.~Zhu, and J.~Lu, ``{DriveDreamer}:
+  Towards real-world-drive world models for autonomous driving,'' in
+  \emph{Proc. Eur. Conf. Comput. Vis. (ECCV)}, 2024, pp. 55--72.
 
 \bibitem{min2024driveworld}
-C.~Min \emph{et~al.}, ``DriveWorld: 4D pre-trained scene understanding via
+C.~Min \emph{et~al.}, ``{DriveWorld}: {4D} pre-trained scene understanding via
   world models for autonomous driving,'' in \emph{Proc. IEEE/CVF Conf. Comput.
   Vis. Pattern Recognit. (CVPR)}, 2024, pp. 15\,522--15\,533.
 
 \bibitem{zheng2024genad}
-W.~Zheng, R.~Song, X.~Guo, C.~Zhang, and L.~Chen, ``GenAD: Generative
+W.~Zheng, R.~Song, X.~Guo, C.~Zhang, and L.~Chen, ``{GenAD}: Generative
   end-to-end autonomous driving,'' in \emph{Proc. Eur. Conf. Comput. Vis.
   (ECCV)}, 2024, pp. 87--104.
 
 \bibitem{liao2025diffusiondrive}
-B.~Liao \emph{et~al.}, ``DiffusionDrive: Truncated diffusion model for
+B.~Liao \emph{et~al.}, ``{DiffusionDrive}: Truncated diffusion model for
   end-to-end autonomous driving,'' in \emph{Proc. IEEE/CVF Conf. Comput. Vis.
   Pattern Recognit. (CVPR)}, 2025, pp. 12\,037--12\,047.
 
 \bibitem{qian2024fasionad}
-K.~Qian \emph{et~al.}, ``FASIONAD: Fast and slow fusion thinking systems for
-  human-like autonomous driving with adaptive feedback,'' 2024,
-  arXiv:2411.18013.
+K.~Qian \emph{et~al.}, ``{FASIONAD}: Fast and slow fusion thinking systems for
+  human-like autonomous driving with adaptive feedback,'' arXiv:2411.18013,
+  2024.
 
 \bibitem{zhang2025adadrive}
-R.~Zhang \emph{et~al.}, ``AdaDrive: Self-adaptive slow-fast system for
+R.~Zhang \emph{et~al.}, ``{AdaDrive}: Self-adaptive slow-fast system for
   language-grounded autonomous driving,'' in \emph{Proc. IEEE/CVF Int. Conf.
   Comput. Vis. (ICCV)}, 2025, pp. 5112--5121.
 
 \bibitem{xin2026netroller}
-R.~Xin \emph{et~al.}, ``NetRoller: Interfacing general and specialized models
+R.~Xin \emph{et~al.}, ``{NetRoller}: Interfacing general and specialized models
   for end-to-end autonomous driving,'' \emph{IEEE Trans. Veh. Technol.},
   vol.~75, no.~5, pp. 7469--7482, 2026.
 
 \bibitem{mei2024leapad}
 J.~Mei \emph{et~al.}, ``Continuously learning, adapting, and improving: A
-  dual-process approach to autonomous driving,'' 2024, arXiv:2405.15324.
+  dual-process approach to autonomous driving,'' arXiv:2405.15324, 2024.
 
 \bibitem{russell1991metareasoning}
-S.~Russell and E.~Wefald, ``Principles of metareasoning,'' \emph{Artif. Intell.},
-  vol.~49, nos.~1--3, pp. 361--395, 1991.
+S.~Russell and E.~Wefald, ``Principles of metareasoning,'' \emph{Artif.
+  Intell.}, vol.~49, no. 1--3, pp. 361--395, 1991.
 
 \bibitem{boddy1994deliberation}
 M.~Boddy and T.~L. Dean, ``Deliberation scheduling for problem solving in
-  time-constrained environments,'' \emph{Artif. Intell.}, vol.~67,
-  no.~2, pp. 245--285, 1994.
+  time-constrained environments,'' \emph{Artif. Intell.}, vol.~67, no.~2, pp.
+  245--285, 1994.
 
 \bibitem{zilberstein1996anytime}
 S.~Zilberstein, ``Using anytime algorithms in intelligent systems,'' \emph{AI
@@ -115,8 +115,8 @@ B.~Cserna, W.~Ruml, and J.~Frank, ``Planning time to think: Metareasoning for
 \bibitem{elboher2023concurrent}
 A.~Elboher, A.~Bensoussan, E.~Karpas, W.~Ruml, S.~S. Shperberg, and E.~Shimony,
   ``A formal metareasoning model of concurrent planning and execution,'' in
-  \emph{Proc. AAAI Conf. Artif. Intell.}, vol.~37, no.~10, 2023,
-  pp. 12\,427--12\,435.
+  \emph{Proc. AAAI Conf. Artif. Intell.}, vol.~37, no.~10, 2023, pp.
+  12\,427--12\,435.
 
 \bibitem{chen2024asyncdriver}
 Y.~Chen, Z.-h. Ding, Z.~Wang, Y.~Wang, L.~Zhang, and S.~Liu, ``Asynchronous
@@ -145,7 +145,7 @@ T.~G. Molnar, A.~K. Kiss, A.~D. Ames, and G.~Orosz, ``Safety-critical control
 
 \bibitem{shalevshwartz2017rss}
 S.~Shalev-Shwartz, S.~Shammah, and A.~Shashua, ``On a formal model of safe and
-  scalable self-driving cars,'' 2017, arXiv:1708.06374.
+  scalable self-driving cars,'' arXiv:1708.06374, 2017.
 
 \bibitem{liniger2019viability}
 A.~Liniger and J.~Lygeros, ``Real-time control for autonomous racing based on
@@ -157,17 +157,17 @@ E.~Leurent \emph{et~al.}, ``An environment for autonomous driving
   decision-making,'' 2018.
 
 \bibitem{li2023metadrive}
-Q.~Li, Z.~Peng, L.~Feng, Q.~Zhang, Z.~Xue, and B.~Zhou, ``MetaDrive: Composing
-  diverse driving scenarios for generalizable reinforcement learning,''
-  \emph{IEEE Trans. Pattern Anal. Mach. Intell.}, vol.~45, no.~3,
+Q.~Li, Z.~Peng, L.~Feng, Q.~Zhang, Z.~Xue, and B.~Zhou, ``{MetaDrive}:
+  Composing diverse driving scenarios for generalizable reinforcement
+  learning,'' \emph{IEEE Trans. Pattern Anal. Mach. Intell.}, vol.~45, no.~3,
   pp. 3461--3475, 2023.
 
 \bibitem{qwen3technicalreport}
-A.~Yang \emph{et~al.}, ``Qwen3 technical report,'' 2025, arXiv:2505.09388.
+A.~Yang \emph{et~al.}, ``{Qwen3} technical report,'' arXiv:2505.09388, 2025.
 
 \bibitem{kou2025padriver}
-G.~Kou \emph{et~al.}, ``PADriver: Towards personalized autonomous driving,'' in
-  \emph{Proc. Int. Joint Conf. Neural Netw. (IJCNN)}, 2025, pp. 1--8.
+G.~Kou \emph{et~al.}, ``{PADriver}: Towards personalized autonomous driving,''
+  in \emph{Proc. Int. Joint Conf. Neural Netw. (IJCNN)}, 2025, pp. 1--8.
 
 \bibitem{tvtVLNavigationCAV2025}
 Y.~Hu, D.~Ou, J.~Huang, M.~Wu, M.~Hao, and R.~Yu, ``Integrating vision and
