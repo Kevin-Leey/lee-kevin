@@ -9,7 +9,7 @@
 
 当前稿件的 PDF 呈现已经符合 IEEE Transactions 双栏论文的主体视觉规范，整体达到 `paper/ref` 中部分 IEEE Transactions on Vehicular Technology 论文的基本呈现水准。`IEEEtran` 的 `letterpaper,journal` 模式、10 页 letter 页面、正文双栏、摘要与关键词位置、首段 drop cap、图表编号、公式编号、页眉、IEEE 引用样式和参考文献连续编号均正常。
 
-本次检查确认：32 个正文引用与 32 个 `bibitem` 一一对应，没有未定义引用或交叉引用；PDF 编译成功，没有图表裁切、公式越界、正文重叠或明显破坏阅读的空白。当前稿件仍属于 **Minor Editorial Revision**，主要剩余问题是作者元数据完整性、少量 IEEEtran 浮动体语义，以及两处方法表达的严格性。
+本次检查确认：32 个正文引用与 32 个 `bibitem` 一一对应，没有未定义引用或交叉引用；PDF 编译成功，没有图表裁切、公式越界、正文重叠或明显破坏阅读的空白。当前稿件仍属于 **Minor Editorial Revision**，主要剩余问题是作者元数据完整性及两处方法表达的严格性。
 
 ## 必须修正
 
@@ -34,22 +34,15 @@
 - `F_r`、`A_r`、`H_r` 和 `c_r` 被说明为在 `s_r` 及并发的 `a_r^f` 上重算，但没有明确给出它们相对于 query 侧 `s_t`、`a_t^f`、`\mathcal D_t` 和 `c_t` 的替换关系。
 - 当前叙述足以理解算法意图，但严格审稿时仍需要读者自行推断 query-to-release 的状态、动作域和代价接口迁移。建议增加一句符号映射说明，并明确 `L_t` 与 `N_t` 只属于 admission，不在 release 侧重新进入 `g_r`。
 
-### 4. 多个独立图表共用一个浮动体，IEEEtran 源文件语义不够稳妥
-
-- Fig. 3 与 Fig. 4 在 `paper/main.tex:508-525` 的同一个 `figure*` 中分别调用 `\caption`。
-- Fig. 6 与 Fig. 7 在 `paper/main.tex:556-572` 的同一个 `figure*` 中分别调用 `\caption`。
-- Tables III–IV 在 `paper/main.tex:730-773` 的同一个 `table*` 中分别调用 `\caption`。
-- 当前 PDF 中编号、位置和可读性均正常，因而不是视觉缺陷。但 IEEEtran 的稳妥写法是一个独立浮动体对应一个 caption，或使用 IEEE 兼容的 subfigure/subtable 机制。当前多次 `\caption` 的写法可能使 List of Figures/List of Tables、超链接锚点和后续 XML/生产转换的语义依赖实现细节。若准备正式投稿源文件，建议将这些独立图表拆为独立浮动体，或明确采用模板兼容的子图方案，同时保持当前 PDF 的版面顺序。
-
 ## 建议终校
 
-### 5. Fig. 6 的命名仍混合投影前与投影后层级
+### 4. Fig. 6 的命名仍混合投影前与投影后层级
 
 - 位置：Fig. 6(a) 图内标签及 `paper/main.tex:559-563`。
 - 正文和方法部分先在 mapped-command 层判断 distinctness，再经过 `\Phi` 得到 executable action；图内的 `Effective actions differ` 容易被理解为投影后的最终动作差异，而图中后续又单独给出 `Final action distinct (2)`。
 - 建议将前者改成 `Mapped commands differ` 或 `Pre-projection commands differ`，保留后者表示投影后的最终差异，使图中阶段与式 (5) 的层级一致。
 
-### 6. 两处机制归因语气略强
+### 5. 两处机制归因语气略强
 
 - 位置：`paper/main.tex:502-504` 和 `paper/main.tex:810-813` 附近。
 - `explains why`、`which explains` 将观测到的关联直接写成确定因果。当前实验能够支持机制一致性解释，但不需要承担更强的因果识别责任。
@@ -68,4 +61,4 @@
 
 ## 最终判断
 
-论文的主体版式和科研呈现已经可以作为 IEEE TVT 投稿稿件的基础版本。正式提交前，优先补齐作者单位和脚注信息，并处理空集合公式约定及 release 侧符号闭环；若源文件还要进入 IEEE 生产转换流程，再规范多 caption 浮动体。Fig. 6 标签和两处因果语气属于低风险终校项，不需要改变章节、图表顺序、方法主线或实验结论。
+论文的主体版式和科研呈现已经可以作为 IEEE TVT 投稿稿件的基础版本。正式提交前，优先补齐作者单位和脚注信息，并处理空集合公式约定及 release 侧符号闭环。Fig. 6 标签和两处因果语气属于低风险终校项，不需要改变章节、图表顺序、方法主线或实验结论。
