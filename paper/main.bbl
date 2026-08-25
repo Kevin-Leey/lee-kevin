@@ -24,26 +24,27 @@
 \bibitem{wen2024dilu}
 L.~Wen \emph{et~al.}, ``{DiLu}: A knowledge-driven approach to autonomous
   driving with large language models,'' in \emph{Proc. Int. Conf. Learn.
-  Represent. (ICLR)}, vol. 2024, 2024, pp. 34\,503--34\,522.
+  Represent.}, 2024.
 
 \bibitem{chen2024drivingllms}
 L.~Chen \emph{et~al.}, ``Driving with {LLMs}: Fusing object-level vector
   modality for explainable autonomous driving,'' in \emph{Proc. IEEE Int. Conf.
-  Robot. Autom. (ICRA)}, 2024, pp. 14\,093--14\,100.
+  Robot. Autom.}, 2024, pp. 14\,093--14\,100.
 
 \bibitem{mao2023gptdriver}
 J.~Mao, Y.~Qian, J.~Ye, H.~Zhao, and Y.~Wang, ``{GPT-Driver}: Learning to drive
-  with {GPT},'' arXiv:2310.01415, 2023.
+  with {GPT},'' 2023, arXiv:2310.01415.
 
 \bibitem{tvtDrivingKnowledge2026}
 D.~Pei, J.~He, K.~Liu, Y.~Wu, Y.~Lei, and X.~Xiao, ``Enhancement of large
   language models driving knowledge for practical autonomous driving decision
-  making,'' \emph{IEEE Trans. Veh. Technol.}, 2026.
+  making,'' \emph{IEEE Trans. Veh. Technol.}, vol.~75, no.~8, pp.
+  15\,944--15\,959, 2026.
 
 \bibitem{shao2024lmdrive}
 H.~Shao \emph{et~al.}, ``{LMDrive}: Closed-loop end-to-end driving with large
   language models,'' in \emph{Proc. IEEE/CVF Conf. Comput. Vis. Pattern
-  Recognit. (CVPR)}, 2024, pp. 15\,120--15\,130.
+  Recognit.}, 2024, pp. 15\,120--15\,130.
 
 \bibitem{tvtCtrail2026}
 Z.~Cui \emph{et~al.}, ``{C-TRAIL}: A commonsense world framework for trajectory
@@ -58,32 +59,32 @@ J.~Wang, H.~Ren, X.~Zhu, and Z.~Ma, ``Enhancing autonomous vehicle
 \bibitem{wang2024drivedreamer}
 X.~Wang, Z.~Zhu, G.~Huang, X.~Chen, J.~Zhu, and J.~Lu, ``{DriveDreamer}:
   Towards real-world-drive world models for autonomous driving,'' in
-  \emph{Proc. Eur. Conf. Comput. Vis. (ECCV)}, 2024, pp. 55--72.
+  \emph{Proc. Eur. Conf. Comput. Vis.}, 2025, pp. 55--72.
 
 \bibitem{min2024driveworld}
 C.~Min \emph{et~al.}, ``{DriveWorld}: {4D} pre-trained scene understanding via
   world models for autonomous driving,'' in \emph{Proc. IEEE/CVF Conf. Comput.
-  Vis. Pattern Recognit. (CVPR)}, 2024, pp. 15\,522--15\,533.
+  Vis. Pattern Recognit.}, 2024, pp. 15\,522--15\,533.
 
 \bibitem{zheng2024genad}
 W.~Zheng, R.~Song, X.~Guo, C.~Zhang, and L.~Chen, ``{GenAD}: Generative
-  end-to-end autonomous driving,'' in \emph{Proc. Eur. Conf. Comput. Vis.
-  (ECCV)}, 2024, pp. 87--104.
+  end-to-end autonomous driving,'' in \emph{Proc. Eur. Conf. Comput. Vis.},
+  2025, pp. 87--104.
 
 \bibitem{liao2025diffusiondrive}
 B.~Liao \emph{et~al.}, ``{DiffusionDrive}: Truncated diffusion model for
   end-to-end autonomous driving,'' in \emph{Proc. IEEE/CVF Conf. Comput. Vis.
-  Pattern Recognit. (CVPR)}, 2025, pp. 12\,037--12\,047.
+  Pattern Recognit.}, 2025, pp. 12\,037--12\,047.
 
 \bibitem{qian2024fasionad}
 K.~Qian \emph{et~al.}, ``{FASIONAD}: Fast and slow fusion thinking systems for
-  human-like autonomous driving with adaptive feedback,'' arXiv:2411.18013,
-  2024.
+  human-like autonomous driving with adaptive feedback,'' 2024,
+  arXiv:2411.18013.
 
 \bibitem{zhang2025adadrive}
 R.~Zhang \emph{et~al.}, ``{AdaDrive}: Self-adaptive slow-fast system for
   language-grounded autonomous driving,'' in \emph{Proc. IEEE/CVF Int. Conf.
-  Comput. Vis. (ICCV)}, 2025, pp. 5112--5121.
+  Comput. Vis.}, 2025, pp. 5112--5121.
 
 \bibitem{xin2026netroller}
 R.~Xin \emph{et~al.}, ``{NetRoller}: Interfacing general and specialized models
@@ -92,7 +93,8 @@ R.~Xin \emph{et~al.}, ``{NetRoller}: Interfacing general and specialized models
 
 \bibitem{mei2024leapad}
 J.~Mei \emph{et~al.}, ``Continuously learning, adapting, and improving: A
-  dual-process approach to autonomous driving,'' arXiv:2405.15324, 2024.
+  dual-process approach to autonomous driving,'' in \emph{Proc. Adv. Neural
+  Inf. Process. Syst.}, 2024, pp. 123\,261--123\,290.
 
 \bibitem{russell1991metareasoning}
 S.~Russell and E.~Wefald, ``Principles of metareasoning,'' \emph{Artif.
@@ -105,28 +107,27 @@ M.~Boddy and T.~L. Dean, ``Deliberation scheduling for problem solving in
 
 \bibitem{zilberstein1996anytime}
 S.~Zilberstein, ``Using anytime algorithms in intelligent systems,'' \emph{AI
-  Mag.}, vol.~17, no.~3, pp. 73--73, 1996.
+  Mag.}, vol.~17, no.~3, pp. 73--83, 1996.
 
 \bibitem{cserna2017planning}
 B.~Cserna, W.~Ruml, and J.~Frank, ``Planning time to think: Metareasoning for
   on-line planning with durative actions,'' in \emph{Proc. Int. Conf. Autom.
-  Plan. Sched. (ICAPS)}, vol.~27, 2017, pp. 56--60.
+  Plan. Sched.}, 2017, pp. 56--60.
 
 \bibitem{elboher2023concurrent}
 A.~Elboher, A.~Bensoussan, E.~Karpas, W.~Ruml, S.~S. Shperberg, and E.~Shimony,
   ``A formal metareasoning model of concurrent planning and execution,'' in
-  \emph{Proc. AAAI Conf. Artif. Intell.}, vol.~37, no.~10, 2023, pp.
-  12\,427--12\,435.
+  \emph{Proc. AAAI Conf. Artif. Intell.}, 2023, pp. 12\,427--12\,435.
 
 \bibitem{chen2024asyncdriver}
 Y.~Chen, Z.-h. Ding, Z.~Wang, Y.~Wang, L.~Zhang, and S.~Liu, ``Asynchronous
   large language model enhanced planner for autonomous driving,'' in
-  \emph{Proc. Eur. Conf. Comput. Vis. (ECCV)}, 2024, pp. 22--38.
+  \emph{Proc. Eur. Conf. Comput. Vis.}, 2025, pp. 22--38.
 
 \bibitem{chen2022simplexdrive}
 S.~Chen, Y.~Sun, D.~Li, Q.~Wang, Q.~Hao, and J.~Sifakis, ``Runtime safety
   assurance for learning-enabled control of autonomous driving vehicles,'' in
-  \emph{Proc. IEEE Int. Conf. Robot. Autom. (ICRA)}, 2022, pp. 8978--8984.
+  \emph{Proc. IEEE Int. Conf. Robot. Autom.}, 2022, pp. 8978--8984.
 
 \bibitem{tabuada2007event}
 P.~Tabuada, ``Event-triggered real-time scheduling of stabilizing control
@@ -145,7 +146,7 @@ T.~G. Molnar, A.~K. Kiss, A.~D. Ames, and G.~Orosz, ``Safety-critical control
 
 \bibitem{shalevshwartz2017rss}
 S.~Shalev-Shwartz, S.~Shammah, and A.~Shashua, ``On a formal model of safe and
-  scalable self-driving cars,'' arXiv:1708.06374, 2017.
+  scalable self-driving cars,'' 2017, arXiv:1708.06374.
 
 \bibitem{liniger2019viability}
 A.~Liniger and J.~Lygeros, ``Real-time control for autonomous racing based on
@@ -153,8 +154,8 @@ A.~Liniger and J.~Lygeros, ``Real-time control for autonomous racing based on
   no.~2, pp. 464--478, 2019.
 
 \bibitem{lesort2018highwayenv}
-E.~Leurent \emph{et~al.}, ``An environment for autonomous driving
-  decision-making,'' 2018.
+E.~Leurent, ``An environment for autonomous driving decision-making,'' 2018,
+  {GitHub} repository.
 
 \bibitem{li2023metadrive}
 Q.~Li, Z.~Peng, L.~Feng, Q.~Zhang, Z.~Xue, and B.~Zhou, ``{MetaDrive}:
@@ -163,11 +164,11 @@ Q.~Li, Z.~Peng, L.~Feng, Q.~Zhang, Z.~Xue, and B.~Zhou, ``{MetaDrive}:
   pp. 3461--3475, 2023.
 
 \bibitem{qwen3technicalreport}
-A.~Yang \emph{et~al.}, ``{Qwen3} technical report,'' arXiv:2505.09388, 2025.
+A.~Yang \emph{et~al.}, ``{Qwen3} technical report,'' 2025, arXiv:2505.09388.
 
 \bibitem{kou2025padriver}
 G.~Kou \emph{et~al.}, ``{PADriver}: Towards personalized autonomous driving,''
-  in \emph{Proc. Int. Joint Conf. Neural Netw. (IJCNN)}, 2025, pp. 1--8.
+  in \emph{Proc. Int. Joint Conf. Neural Netw.}, 2025, pp. 1--8.
 
 \bibitem{tvtVLNavigationCAV2025}
 Y.~Hu, D.~Ou, J.~Huang, M.~Wu, M.~Hao, and R.~Yu, ``Integrating vision and

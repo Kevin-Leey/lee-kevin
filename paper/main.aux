@@ -32,8 +32,8 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Language-Conditioned and Generative Driving}{2}{subsection.2.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Dual Process Reasoning and Selective Computation}{2}{subsection.2.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Runtime Safety, Delay, and Viability}{2}{subsection.2.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces RGD system architecture. Solid arrows indicate online control paths. The dashed line indicates the offline R-VoD diagnostic branch. The memory module belongs to the slow-reasoner input context, not to the online gate.}}{3}{figure.1}\protected@file@percent }
-\newlabel{fig:overview}{{1}{3}{RGD system architecture. Solid arrows indicate online control paths. The dashed line indicates the offline R-VoD diagnostic branch. The memory module belongs to the slow-reasoner input context, not to the online gate}{figure.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces RGD system architecture. Solid arrows indicate online control paths. The lower branch indicates the offline R-VoD diagnostic path. The memory module belongs to the slow-reasoner input context, not to the online gate.}}{3}{figure.1}\protected@file@percent }
+\newlabel{fig:overview}{{1}{3}{RGD system architecture. Solid arrows indicate online control paths. The lower branch indicates the offline R-VoD diagnostic path. The memory module belongs to the slow-reasoner input context, not to the online gate}{figure.1}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {III}Release-Aware Gated Deliberation}{3}{section.3}\protected@file@percent }
 \newlabel{sec:method}{{III}{3}{Release-Aware Gated Deliberation}{section.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Query and Release Process}{3}{subsection.3.1}\protected@file@percent }
@@ -50,40 +50,40 @@
 \newlabel{eq:release_stages}{{5}{4}{Release Validation}{equation.3.5}{}}
 \newlabel{eq:execution_contract}{{6}{4}{Release Validation}{equation.3.6}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-D}}Offline Measure of Corrective Opportunity}{4}{subsection.3.4}\protected@file@percent }
-\newlabel{eq:rollout_utility}{{7}{4}{Offline Measure of Corrective Opportunity}{equation.3.7}{}}
-\newlabel{eq:rvod}{{8}{4}{Offline Measure of Corrective Opportunity}{equation.3.8}{}}
 \citation{lesort2018highwayenv}
 \citation{li2023metadrive}
 \citation{qwen3technicalreport}
 \citation{kou2025padriver}
-\citation{tvtVLNavigationCAV2025}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Representative highway-env and MetaDrive scenes.}}{5}{figure.2}\protected@file@percent }
-\newlabel{fig:simulator_scenes}{{2}{5}{Representative highway-env and MetaDrive scenes}{figure.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Representative scenes from highway-env (top) and MetaDrive (bottom).}}{5}{figure.2}\protected@file@percent }
+\newlabel{fig:simulator_scenes}{{2}{5}{Representative scenes from highway-env (top) and MetaDrive (bottom)}{figure.2}{}}
+\newlabel{eq:rollout_utility}{{7}{5}{Offline Measure of Corrective Opportunity}{equation.3.7}{}}
+\newlabel{eq:rvod}{{8}{5}{Offline Measure of Corrective Opportunity}{equation.3.8}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {IV}Experiments and Discussion}{5}{section.4}\protected@file@percent }
 \newlabel{sec:experiments}{{IV}{5}{Experiments and Discussion}{section.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Experimental Setup}{5}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Performance Context Under Published Settings}{5}{subsection.4.2}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Highway-env Performance Under the PADriver Experimental Configuration.}}{5}{table.1}\protected@file@percent }
 \newlabel{tab:padriver}{{I}{5}{Highway-env Performance Under the PADriver Experimental Configuration}{table.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Performance Context Under Published Settings}{5}{subsection.4.2}\protected@file@percent }
+\citation{tvtVLNavigationCAV2025}
 \citation{tvtVLNavigationCAV2025}
 \citation{tvtVLNavigationCAV2025}
 \@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Success rates obtained under the highway-env traffic settings of Hu~et~al.~\cite  {tvtVLNavigationCAV2025}.}}{6}{figure.3}\protected@file@percent }
 \newlabel{fig:hu_protocol}{{3}{6}{Success rates obtained under the highway-env traffic settings of Hu~et~al.~\cite {tvtVLNavigationCAV2025}}{figure.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Slow-path allocation under the 30-seed paired protocol. (a) Mean requests per episode with 95\% seed-bootstrap intervals. (b) Paired RGD-minus-baseline differences for the two request-intensive allocators. Negative values denote fewer RGD requests.}}{6}{figure.4}\protected@file@percent }
-\newlabel{fig:formal_allocation}{{4}{6}{Slow-path allocation under the 30-seed paired protocol. (a) Mean requests per episode with 95\% seed-bootstrap intervals. (b) Paired RGD-minus-baseline differences for the two request-intensive allocators. Negative values denote fewer RGD requests}{figure.4}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces RGD Operating Metrics Under the Settings of Hu et al.}}{6}{table.2}\protected@file@percent }
 \newlabel{tab:hu_protocol}{{II}{6}{RGD Operating Metrics Under the Settings of Hu et al}{table.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Slow-path allocation under the 30-seed paired protocol. (a) Mean requests per episode with 95\% seed-bootstrap intervals. (b) Paired RGD-minus-baseline differences for the two request-intensive allocators. Negative values denote fewer RGD requests.}}{6}{figure.4}\protected@file@percent }
+\newlabel{fig:formal_allocation}{{4}{6}{Slow-path allocation under the 30-seed paired protocol. (a) Mean requests per episode with 95\% seed-bootstrap intervals. (b) Paired RGD-minus-baseline differences for the two request-intensive allocators. Negative values denote fewer RGD requests}{figure.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Query- and Release-Side Mechanism Evidence}{6}{subsection.4.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}1}Query-Side Allocation and Delay Sensitivity}{6}{subsubsection.4.3.1}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Slow-path allocation under zero added delay and the fixed-gate delay sweep. (a) Total requests and (b) mean per-frame runtime in the zero-delay cohort. (c) Mean distance with 95\% seed-bootstrap intervals. Labels give the corresponding RGD request counts.}}{7}{figure.5}\protected@file@percent }
 \newlabel{fig:zero_delay_extension}{{5}{7}{Slow-path allocation under zero added delay and the fixed-gate delay sweep. (a) Total requests and (b) mean per-frame runtime in the zero-delay cohort. (c) Mean distance with 95\% seed-bootstrap intervals. Labels give the corresponding RGD request counts}{figure.5}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Response validation under 1.7-s added delay. (a) Stage-wise retention from request issuance to post-projection actuation. (b) The 28 state-valid outcomes stratified by recovery-cost advantage. The dashed line is the fixed 0.02 margin, and ``final match'' denotes equality with the projected fast action.}}{7}{figure.6}\protected@file@percent }
-\newlabel{fig:operating_profile}{{6}{7}{Response validation under 1.7-s added delay. (a) Stage-wise retention from request issuance to post-projection actuation. (b) The 28 state-valid outcomes stratified by recovery-cost advantage. The dashed line is the fixed 0.02 margin, and ``final match'' denotes equality with the projected fast action}{figure.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Response validation under 1.7-s added delay. (a) Stage-wise retention from request issuance to post-projection actuation. (b) The 28 state-valid outcomes stratified by recovery-cost advantage. The dashed line is the fixed 0.02 margin, and ``executable match'' denotes equality with the projected fast action.}}{7}{figure.6}\protected@file@percent }
+\newlabel{fig:operating_profile}{{6}{7}{Response validation under 1.7-s added delay. (a) Stage-wise retention from request issuance to post-projection actuation. (b) The 28 state-valid outcomes stratified by recovery-cost advantage. The dashed line is the fixed 0.02 margin, and ``executable match'' denotes equality with the projected fast action}{figure.6}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces One-at-a-time admission-criterion ablation over 20 seeds. (a) Total requests, (b) additional release states relative to Full RGD, and (c) R-VoD corrective-state-rate differences with 95\% seed-bootstrap intervals.}}{7}{figure.7}\protected@file@percent }
 \newlabel{fig:components}{{7}{7}{One-at-a-time admission-criterion ablation over 20 seeds. (a) Total requests, (b) additional release states relative to Full RGD, and (c) R-VoD corrective-state-rate differences with 95\% seed-bootstrap intervals}{figure.7}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}2}Release-Side Validation Under Delay}{7}{subsubsection.4.3.2}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Six-condition gate ablation and matched-proposal release audit. (a) Serial candidate retention. Dashed cells mark omitted predicates. (b) Issued, released, and timed-out requests over 20 paired seeds. (c) Matched-rollout utility advantage for the three post-projection distinct interventions. Horizontal labels are seed identifiers, and retained and filtered denote the release-validation outcome.}}{8}{figure.8}\protected@file@percent }
 \newlabel{fig:formal_components}{{8}{8}{Six-condition gate ablation and matched-proposal release audit. (a) Serial candidate retention. Dashed cells mark omitted predicates. (b) Issued, released, and timed-out requests over 20 paired seeds. (c) Matched-rollout utility advantage for the three post-projection distinct interventions. Horizontal labels are seed identifiers, and retained and filtered denote the release-validation outcome}{figure.8}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {IV-C}2}Release-Side Validation Under Delay}{8}{subsubsection.4.3.2}\protected@file@percent }
 \citation{titsPolicyTransfer2025}
 \citation{titsPolicyTransfer2025}
 \@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Results With Different Slow Reasoners.}}{9}{table.3}\protected@file@percent }
@@ -96,7 +96,6 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Evaluation Across Lane and Density Conditions}{9}{subsection.4.5}\protected@file@percent }
 \newlabel{subsec:traffic}{{\mbox  {IV-E}}{9}{Evaluation Across Lane and Density Conditions}{subsection.4.5}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Cross-Scenario Evaluation}{9}{subsection.4.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Discussion}{9}{subsection.4.7}\protected@file@percent }
 \bibstyle{IEEEtran}
 \bibdata{references}
 \bibcite{wen2024dilu}{1}
@@ -131,6 +130,7 @@
 \bibcite{qwen3technicalreport}{30}
 \bibcite{kou2025padriver}{31}
 \bibcite{tvtVLNavigationCAV2025}{32}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Discussion}{10}{subsection.4.7}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion}{10}{section.5}\protected@file@percent }
 \newlabel{sec:conclusion}{{V}{10}{Conclusion}{section.5}{}}
 \@writefile{toc}{\contentsline {section}{References}{10}{section*.1}\protected@file@percent }

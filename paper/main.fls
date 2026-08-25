@@ -1,6 +1,6 @@
 PWD E:\BaiduNetdiskDownload\dilu_qwen_stable\paper
 INPUT C:\Users\MacOS\AppData\Local\MiKTeX\miktex\data\le\pdftex\pdflatex.fmt
-INPUT e:\BaiduNetdiskDownload\dilu_qwen_stable\paper\main.tex
+INPUT main.tex
 OUTPUT main.log
 INPUT D:\MikTEX\tex\latex\ieeetran\IEEEtran.cls
 INPUT D:\MikTEX\tex\latex\ieeetran\IEEEtran.cls
@@ -170,6 +170,10 @@ OUTPUT main.pdf
 INPUT .\main.out
 INPUT .\main.out
 OUTPUT main.out
+INPUT D:\MikTEX\tex\latex\psnfss\omsptm.fd
+INPUT D:\MikTEX\tex\latex\psnfss\omsptm.fd
+INPUT D:\MikTEX\tex\latex\psnfss\omsptm.fd
+INPUT D:\MikTEX\fonts\tfm\public\cm\cmsy8.tfm
 INPUT D:\MikTEX\fonts\tfm\adobe\times\ptmrc7t.tfm
 INPUT D:\MikTEX\fonts\tfm\adobe\times\ptmb7t.tfm
 INPUT D:\MikTEX\fonts\tfm\adobe\times\ptmb7t.tfm
@@ -192,6 +196,7 @@ INPUT D:\MikTEX\fonts\tfm\adobe\times\ptmr8r.tfm
 INPUT D:\MikTEX\fonts\tfm\adobe\times\ptmr8r.tfm
 INPUT D:\MikTEX\fonts\vf\adobe\times\ptmb7t.vf
 INPUT D:\MikTEX\fonts\tfm\adobe\times\ptmb8r.tfm
+INPUT D:\MikTEX\fonts\vf\adobe\times\ptmr7t.vf
 INPUT D:\MikTEX\fonts\vf\adobe\times\ptmr7t.vf
 INPUT .\figures\sturcture_new.svg
 INPUT .\figures\sturcture_new.svg
@@ -217,7 +222,6 @@ INPUT D:\MikTEX\tex\latex\amsfonts\umsb.fd
 INPUT D:\MikTEX\fonts\tfm\public\amsfonts\symbols\msbm10.tfm
 INPUT D:\MikTEX\fonts\tfm\public\amsfonts\symbols\msbm7.tfm
 INPUT D:\MikTEX\fonts\tfm\public\amsfonts\symbols\msbm5.tfm
-INPUT D:\MikTEX\fonts\vf\adobe\times\ptmr7t.vf
 INPUT .\figures\fig_simulator_scenes.svg
 INPUT .\figures\fig_simulator_scenes.svg
 INPUT .\figures\fig_simulator_scenes.png
@@ -293,6 +297,8 @@ INPUT D:\MikTEX\fonts\type1\public\amsfonts\cm\cmsy5.pfb
 INPUT D:\MikTEX\fonts\type1\public\amsfonts\cm\cmsy5.pfb
 INPUT D:\MikTEX\fonts\type1\public\amsfonts\cm\cmsy7.pfb
 INPUT D:\MikTEX\fonts\type1\public\amsfonts\cm\cmsy7.pfb
+INPUT D:\MikTEX\fonts\type1\public\amsfonts\cm\cmsy8.pfb
+INPUT D:\MikTEX\fonts\type1\public\amsfonts\cm\cmsy8.pfb
 INPUT D:\MikTEX\fonts\type1\public\amsfonts\symbols\msbm10.pfb
 INPUT D:\MikTEX\fonts\type1\public\amsfonts\symbols\msbm10.pfb
 INPUT D:\MikTEX\fonts\type1\urw\times\utmb8a.pfb
