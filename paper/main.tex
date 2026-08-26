@@ -99,7 +99,7 @@ separate authority decisions: one before computation and another before
 actuation.
 
 This paper presents RGD-Driver, which treats the slow reasoner as a
-release-conditioned proposal generator rather than a persistent command
+release-conditioned proposal generator, not a persistent command
 source. Release-Aware Gated Deliberation (RGD) first admits a request only when
 delay feasibility, alternative-action support, recovery-cost advantage, and
 scene demand hold jointly. When the response arrives, RGD remaps the proposal
@@ -110,7 +110,7 @@ stream unchanged. We further define Recoverable Value of Deliberation
 (R-VoD), an offline matched-rollout measure of the corrective opportunity
 available at a release state under a common continuation policy. R-VoD is kept
 outside the online gate and is used to test whether the states selected by RGD
-retain meaningful intervention value. Paired closed-loop experiments,
+retain meaningful intervention value. Closed-loop experiments,
 controlled-delay analysis, component ablations, and matched-proposal replay
 connect the resource-allocation result to the specific admission and release
 mechanisms that produce it.
@@ -128,7 +128,7 @@ The main contributions are as follows:
   continuation policy. It separates release-state value from reasoner output
   quality and provides an independent diagnostic for mechanism analysis.
   \item Closed-loop results on highway-env and MetaDrive show that RGD
-  reduces continual slow-path use by over 90\% while preserving paired task
+  reduces continual slow-path use by over 90\% while preserving task
   outcomes, and that release validation retains the corrective intervention while
   filtering harmful or negligible alternatives.
 \end{enumerate}
@@ -187,7 +187,7 @@ therefore disappear, become redundant, or be superseded before the response
 arrives. RGD extends selective computation from invocation to authority. The admission
 gate controls whether slow reasoning is worth initiating, whereas the release
 gate controls whether its realized output is worth applying. R-VoD then
-measures the remaining corrective opportunity at the release state rather than
+measures the remaining corrective opportunity at the release state, not
 the expected value inferred at the query state. This separation prevents a
 successful request from being treated as an unconditional future command.
 
@@ -258,7 +258,7 @@ fast default at the shared action mapper, before the safety shield projects the
 selection to actuation and closes the loop. The
 lower branch snapshots the release
 state, compares fast and candidate rollouts, and generates R-VoD labels offline
-for diagnosis rather than online control.
+for diagnosis, not online control.
 \subsection{Query and Release Process}
 At frame $t$, the ego vehicle observes state $s_t$. The fast policy supplies
 the canonical command $a_t^f\in\mathcal A(s_t)$ directly to the shared mapper
@@ -476,14 +476,14 @@ MetaDrive~\cite{li2023metadrive} closed-loop simulators, with Qwen3-8B
 \cite{qwen3technicalreport} as the default slow reasoner. The main highway-env
 experiments run at 10~Hz with 30-s episodes. Within each comparison, methods
 share the seed cohort, control interface, reasoner service, request budget, and
-evaluation rule. The paired allocation study uses 30 seeds, and the mechanism
+evaluation rule. The allocation study uses 30 seeds, and the mechanism
 analyses use independent 20-seed cohorts.
 
-Simulator seeds define the paired experimental units. We report 95\% percentile
+Simulator seeds define the experimental units. We report 95\% percentile
 bootstrap intervals and use exact McNemar or paired sign-flip tests, with Holm
 adjustment for prespecified contrasts. Gate criteria, corrective margins, and
 service settings are calibrated before evaluation and then frozen. R-VoD is
-computed offline from matched first-action rollouts. The paired cohort supplies
+computed offline from matched first-action rollouts. The cohort supplies
 the primary resource and task comparison, while controlled-delay and
 matched-proposal cohorts isolate release behavior. Fig.~\ref{fig:simulator_scenes}
 shows representative highway-env and MetaDrive scenes covering lane following,
@@ -532,9 +532,9 @@ RGD runs assigned zero and the corresponding request rate for each setting.
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_formal_main_allocation_ab.pdf}
-\caption{Slow-path allocation under the 30-seed paired protocol.
+\caption{Slow-path allocation under the 30-seed protocol.
 (a) Mean requests per episode with 95\% seed-bootstrap intervals.
-(b) Paired RGD-minus-baseline differences for the two request-intensive
+(b) RGD-minus-baseline differences for the two request-intensive
 allocators. Negative values denote fewer RGD requests.}
 \label{fig:formal_allocation}
 \end{figure}
@@ -590,7 +590,7 @@ denotes equality with the projected fast action.}
 \end{figure*}
 \subsection{Query- and Release-Side Mechanism Evidence}
 \subsubsection{Query-Side Allocation and Delay Sensitivity}
-The paired allocation study compares RGD against five scheduling baselines
+The allocation study compares RGD against five scheduling baselines
 under a common 30-seed protocol: Fast-only (never invokes the slow reasoner),
 Always Slow (issues a request at every eligible frame), Random (requests with
 uniform probability at each eligible frame), Uncertainty (requests when the
@@ -599,13 +599,13 @@ dedicated TTC-urgency score exceeds a threshold). All methods share the same
 Qwen3-8B service, fast controller, action mapper, release interface, and
 episode realization. Only the slow-path allocation policy differs.
 Fig.~\ref{fig:formal_allocation}(a) reports requests per episode, and
-panel~(b) reports the paired RGD-minus-baseline effects for the two
+panel~(b) reports the RGD-minus-baseline effects for the two
 request-intensive allocators.
 
 RGD averages 0.37 requests per episode, reducing slow-path use by 90.5\%
-relative to Always Slow and by 84.5\% relative to Random. The paired
+relative to Always Slow and by 84.5\% relative to Random. The
 differences are $-3.50$ requests [95\% CI $-4.00$, $-3.00$] and $-2.00$
-requests [95\% CI $-2.47$, $-1.53$], with paired standardized effects
+requests [95\% CI $-2.47$, $-1.53$], with standardized effects
 $d_z=-2.49$
 and $-1.49$, respectively. Both contrasts remain significant after Holm
 correction ($p_{\mathrm{H}}=0.00025$). This corresponds to 11 RGD requests
@@ -615,7 +615,7 @@ Risk issues 0.27 requests per episode. RGD therefore occupies a sparse but
 nonzero allocation regime: the conjunction in~\eqref{eq:query_admission}
 rejects routine, unsupported, or delay-infeasible opportunities, yet retains
 access to slow reasoning when all admission predicates hold. Because the
-reasoner service and release interface are shared, the large paired reductions
+reasoner service and release interface are shared, the large reductions
 are attributable to this admission policy rather than a change in model or
 action space. In particular, the 11 admitted requests identify the small subset
 of states in which delay feasibility, alternative-action support, cost advantage,
@@ -627,7 +627,7 @@ continual invocation nor a single-trigger allocator provides.
   \includegraphics[width=0.86\textwidth]{figures/fig_formal_component_release_aligned.pdf}
   \caption{Six-condition gate ablation and matched-proposal release audit.
   (a) Serial candidate retention. Dashed cells mark omitted predicates.
-  (b) Issued, released, and timed-out requests over 20 paired seeds.
+  (b) Issued, released, and timed-out requests over 20 seeds.
   (c) Matched-rollout utility advantage for the three post-projection distinct
   interventions. Horizontal labels are seed identifiers, and retained and
   filtered denote the release-validation outcome.}
@@ -722,7 +722,7 @@ service load: the three arms issue 1, 8, and 40 requests, of which 1, 5, and
 prevents a 40-request burst from reaching the executor. Removing $N$ and
 $H/N$ also yields 4 and 16 mapped proposals distinct from Fast, but the shared
 projection maps all of them to fast-equivalent executable actions, and task
-endpoints remain invariant across 120 observations organized into 20 paired
+endpoints remain invariant across 120 observations organized into 20
 seed blocks. The
 full gate therefore removes workload that produces no distinct actuation in this frozen
 bank.
